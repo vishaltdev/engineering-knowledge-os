@@ -1,0 +1,776 @@
+[
+  {
+    "schemaVersion": 1,
+    "id": "idempotency",
+    "revision": 1,
+    "title": "Idempotency",
+    "collections": [
+      "distributed-internals",
+      "system-design",
+      "production",
+      "mock-interviews"
+    ],
+    "sources": [
+      {
+        "id": "curriculum",
+        "label": "Staff Backend Engineer curriculum · Handbooks 2–4"
+      },
+      {
+        "id": "postgres",
+        "label": "PostgreSQL INSERT",
+        "url": "https://www.postgresql.org/docs/current/sql-insert.html"
+      },
+      {
+        "id": "stripe",
+        "label": "Stripe idempotent requests",
+        "url": "https://docs.stripe.com/api/idempotent_requests"
+      }
+    ],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "The missing payment response",
+        "text": "A ₹1,200 payment commits, but the response times out. The client sends the same request again. What happens to the ledger?"
+      },
+      {
+        "id": "race",
+        "title": "Why a lookup can fail",
+        "text": "A blind retry can charge twice. Checking for a prior payment before writing also races when two requests see an empty result."
+      },
+      {
+        "id": "boundary",
+        "title": "Claim the intent and commit once",
+        "text": "Keep one client-generated key per intent. Scope it to tenant and operation and compare a canonical payload fingerprint. Use a database unique constraint to arbitrate concurrent attempts. Commit the effect and recorded response in one transaction, then replay the result on a matching retry."
+      },
+      {
+        "id": "provider",
+        "title": "Defend the external boundary",
+        "text": "Persist an intent and outbox together. Reuse a stable provider key on delivery. Reconcile ambiguous outcomes through provider lookup or verified events. Align key retention with your retry contract."
+      }
+    ],
+    "links": [
+      {
+        "relation": "requires",
+        "target": "database-transactions"
+      },
+      {
+        "relation": "mitigates",
+        "target": "duplicate-charge"
+      },
+      {
+        "relation": "applied-in",
+        "target": "payments"
+      }
+    ],
+    "cards": [
+      {
+        "id": "lost-response",
+        "stage": "problem",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "A payment request times out. What can you infer about its outcome?",
+        "answer": "The outcome is unknown. The write might already have committed. Retry using the same operation key and resolve against the recorded result."
+      },
+      {
+        "id": "concurrency",
+        "stage": "race",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "Why can two requests both pass an existence check?",
+        "answer": "Both may read before either writes. Use an atomic claim backed by a unique constraint, and commit the ledger effect with the replay record."
+      },
+      {
+        "id": "external-effect",
+        "stage": "provider",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "The provider might have charged before a worker crashed. How do you recover?",
+        "answer": "Reconcile using the stable provider key, a lookup or a verified event. Check provider retention before considering a retry. Preserve unresolved intents for investigation."
+      }
+    ],
+    "atlas": {
+      "id": "payments",
+      "title": "Payment processing",
+      "nodes": [
+        {
+          "id": "client",
+          "label": "Client",
+          "detail": "Creates one key per intent and preserves it across attempts."
+        },
+        {
+          "id": "api",
+          "label": "Payment API",
+          "detail": "Authenticates, scopes the key, fingerprints inputs and replays the committed result."
+        },
+        {
+          "id": "ledger",
+          "label": "Ledger database",
+          "detail": "Arbitrates claims with a unique constraint and commits the local effect and replay record together."
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "api",
+          "label": "POST /payments"
+        },
+        {
+          "from": "api",
+          "to": "ledger",
+          "label": "Transactional claim and write"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal request",
+          "steps": [
+            "Client sends a fresh key.",
+            "API claims it and commits one ledger effect.",
+            "Client receives the recorded result."
+          ]
+        },
+        {
+          "id": "race",
+          "label": "Concurrent retry",
+          "steps": [
+            "Two attempts use the same key.",
+            "The unique constraint admits one writer.",
+            "The second attempt reads the committed record and replays it if the fingerprint matches."
+          ]
+        },
+        {
+          "id": "timeout",
+          "label": "Lost response",
+          "steps": [
+            "The ledger commits successfully.",
+            "The response disappears in transit.",
+            "The client retries with the same key and the API replays the saved result."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "caching",
+    "revision": 1,
+    "title": "Caching",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [
+      {
+        "relation": "applied-in",
+        "target": "product-catalog"
+      }
+    ],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict what happens",
+        "text": "A promotion drives thousands of reads per second for the same product. The database is already close to capacity. What happens when the cache entry expires?"
+      },
+      {
+        "id": "failure",
+        "title": "Where the simple design breaks",
+        "text": "Cache-aside reduces repeated reads, but a hot key expiring can send many simultaneous misses to the database. Identical expiration times amplify this across keys."
+      },
+      {
+        "id": "design",
+        "title": "Change the architecture",
+        "text": "Read from the cache first. On a miss, let one request per key refill it within a bounded deadline. Add jitter across expirations and enforce a database concurrency budget."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the trade-off",
+        "text": "Define a staleness budget by field. Descriptions may tolerate stale-while-revalidate. Checkout should validate price against its authoritative source. Cache invalidation can race with an older in-flight fill, so use versions where stale rewrites matter."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "Why can a cache increase database load at expiry?",
+        "answer": "Many requests observe the same miss and refill concurrently."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "How do you handle a hot-key stampede?",
+        "answer": "Coalesce fills per key, bound refill concurrency and consider serving stale data within policy."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "Would you use the same policy for descriptions and checkout prices?",
+        "answer": "Choose separate staleness budgets and validate the final price against the authoritative service."
+      }
+    ],
+    "atlas": {
+      "id": "product-catalog",
+      "title": "Product catalog",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Catalog API",
+          "detail": "Chooses freshness policy and coalesces fills."
+        },
+        {
+          "id": "1",
+          "label": "Cache",
+          "detail": "Serves hot reads with expiry metadata."
+        },
+        {
+          "id": "2",
+          "label": "Product database",
+          "detail": "Owns the canonical product data."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Read cached product"
+        },
+        {
+          "from": "0",
+          "to": "2",
+          "label": "Fetch on a controlled miss"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "0",
+          "label": "Cache hit",
+          "steps": [
+            "API reads the key.",
+            "Cache returns a fresh value."
+          ]
+        },
+        {
+          "id": "1",
+          "label": "Hot key expires",
+          "steps": [
+            "Concurrent reads miss.",
+            "One refill fetches the product.",
+            "Other readers wait within budget or receive permitted stale data."
+          ]
+        },
+        {
+          "id": "2",
+          "label": "Price changes",
+          "steps": [
+            "The authoritative price changes.",
+            "The cache entry is invalidated or versioned.",
+            "Checkout checks the authoritative price."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "rate-limiting",
+    "revision": 1,
+    "title": "Rate limiting",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [
+      {
+        "relation": "applied-in",
+        "target": "public-api-gateway"
+      }
+    ],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict what happens",
+        "text": "An integration sends 500 requests in one second after reconnecting. You want to allow short bursts while protecting other tenants. Where would you enforce the limit?"
+      },
+      {
+        "id": "failure",
+        "title": "Where the simple design breaks",
+        "text": "A fixed-window counter permits requests near the end of one window and again at the start of the next. A counter per gateway instance also multiplies the effective limit as the fleet scales."
+      },
+      {
+        "id": "design",
+        "title": "Change the architecture",
+        "text": "Use a token bucket per tenant. Refill at a configured rate up to a burst capacity and debit atomically in a shared store when enforcing a global budget. Return 429 with retry guidance when depleted."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the trade-off",
+        "text": "A shared limiter adds latency and an availability dependency. Decide per endpoint whether to fail closed or admit a bounded amount through a local emergency budget. Plan for hot tenant keys."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "What happens at a fixed-window boundary?",
+        "answer": "A client can spend two windows of quota in a short interval."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "Which two values define token-bucket behavior?",
+        "answer": "Refill rate governs sustained throughput and capacity bounds the available burst."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "The shared limiter fails. What policy should you defend?",
+        "answer": "Tie fail-open or fail-closed behavior to endpoint risk and apply a bounded local fallback if admitting traffic."
+      }
+    ],
+    "atlas": {
+      "id": "public-api-gateway",
+      "title": "Public API gateway",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Gateway",
+          "detail": "Identifies the tenant and enforces admission."
+        },
+        {
+          "id": "1",
+          "label": "Quota store",
+          "detail": "Atomically updates the shared bucket."
+        },
+        {
+          "id": "2",
+          "label": "Backend",
+          "detail": "Receives admitted requests."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Check and debit tenant budget"
+        },
+        {
+          "from": "0",
+          "to": "2",
+          "label": "Forward admitted traffic"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "0",
+          "label": "Burst admitted",
+          "steps": [
+            "The tenant bucket has tokens.",
+            "Gateway debits a token and forwards."
+          ]
+        },
+        {
+          "id": "1",
+          "label": "Quota depleted",
+          "steps": [
+            "The store returns insufficient tokens.",
+            "Gateway returns 429."
+          ]
+        },
+        {
+          "id": "2",
+          "label": "Store unavailable",
+          "steps": [
+            "Shared admission times out.",
+            "The gateway applies the configured endpoint fallback."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "load-balancing",
+    "revision": 1,
+    "title": "Load balancing",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [
+      {
+        "relation": "applied-in",
+        "target": "search-api-fleet"
+      }
+    ],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict what happens",
+        "text": "Search requests range from 20 ms to several seconds. Traffic is spread evenly by request count, yet some workers are overloaded. Why?"
+      },
+      {
+        "id": "failure",
+        "title": "Where the simple design breaks",
+        "text": "Round robin equalizes assignment counts. Long requests can overlap on one worker and exhaust its concurrency budget while other workers are idle."
+      },
+      {
+        "id": "design",
+        "title": "Change the architecture",
+        "text": "Use in-flight work as a routing signal where available, and bound concurrency per worker. Remove unhealthy endpoints from rotation and drain connections before planned shutdown."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the trade-off",
+        "text": "Health checks can oscillate during overload. Use bounded retries, readiness hysteresis and load shedding. A global retry burst can overload the healthy remainder during a partial outage."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "Why does equal request count fail to equalize load?",
+        "answer": "Requests occupy resources for different durations and may have different cost."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "What is connection draining for?",
+        "answer": "Stop sending new work to an endpoint while letting existing work finish within a deadline."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "Why can removing unhealthy endpoints trigger cascading failure?",
+        "answer": "Remaining capacity drops while retries increase effective load. Shed work and cap retries."
+      }
+    ],
+    "atlas": {
+      "id": "search-api-fleet",
+      "title": "Search API fleet",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Load balancer",
+          "detail": "Selects eligible backends and observes outstanding work."
+        },
+        {
+          "id": "1",
+          "label": "Search worker A",
+          "detail": "Handles requests with bounded concurrency."
+        },
+        {
+          "id": "2",
+          "label": "Search worker B",
+          "detail": "Shares traffic and can drain during shutdown."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Route search request"
+        },
+        {
+          "from": "0",
+          "to": "2",
+          "label": "Route search request"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "0",
+          "label": "Uneven request duration",
+          "steps": [
+            "One worker accumulates long searches.",
+            "New traffic favors a less busy eligible worker."
+          ]
+        },
+        {
+          "id": "1",
+          "label": "Planned drain",
+          "steps": [
+            "Worker B stops accepting new assignments.",
+            "Existing searches finish before the deadline."
+          ]
+        },
+        {
+          "id": "2",
+          "label": "Partial outage",
+          "steps": [
+            "Health checks remove a worker.",
+            "Admission limits protect remaining capacity."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "queues",
+    "revision": 1,
+    "title": "Message queues",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [
+      {
+        "relation": "applied-in",
+        "target": "notification-delivery"
+      }
+    ],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict what happens",
+        "text": "A user signs up and email delivery takes several seconds. How can the API respond quickly while keeping the notification reliable?"
+      },
+      {
+        "id": "failure",
+        "title": "Where the simple design breaks",
+        "text": "A synchronous call ties signup latency to the email provider. Publishing after committing signup leaves a failure window where the account exists but no notification was queued."
+      },
+      {
+        "id": "design",
+        "title": "Change the architecture",
+        "text": "Commit the account and an outbox row together. Publish asynchronously. Consumers acknowledge after processing and use stable message IDs to deduplicate effects where supported."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the trade-off",
+        "text": "Retries can overwhelm a slow provider. Use backoff, attempt limits, dead-letter handling and queue age alerts. A provider timeout after sending requires reconciliation or a provider-supported idempotency contract."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "What is the dual-write gap in signup?",
+        "answer": "The account commit can succeed before enqueueing fails."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "Can an outbox relay deliver an event twice?",
+        "answer": "Yes. A publish can succeed before the relay records progress, so a later attempt can publish again."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "Which metric catches delayed delivery even when producers look healthy?",
+        "answer": "Age of the oldest pending message or end-to-end delivery delay, monitored against the delivery objective."
+      }
+    ],
+    "atlas": {
+      "id": "notification-delivery",
+      "title": "Notification delivery",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Signup service",
+          "detail": "Persists the account and notification intent together."
+        },
+        {
+          "id": "1",
+          "label": "Queue",
+          "detail": "Buffers work and makes unacknowledged work eligible for redelivery."
+        },
+        {
+          "id": "2",
+          "label": "Email worker",
+          "detail": "Handles retry policy, delivery identity and acknowledgement."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Relay committed outbox events"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Deliver notification job"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "0",
+          "label": "Normal delivery",
+          "steps": [
+            "Signup commits the outbox entry.",
+            "Relay publishes a job.",
+            "Worker sends and acknowledges."
+          ]
+        },
+        {
+          "id": "1",
+          "label": "Worker crashes",
+          "steps": [
+            "A job remains unacknowledged.",
+            "The broker redelivers it.",
+            "The worker checks delivery identity before repeating the effect."
+          ]
+        },
+        {
+          "id": "2",
+          "label": "Provider slows down",
+          "steps": [
+            "Queue age rises.",
+            "Worker limits retries and concurrency.",
+            "Operators investigate delay and dead letters."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "partitioning",
+    "revision": 1,
+    "title": "Data partitioning",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [
+      {
+        "relation": "applied-in",
+        "target": "tenant-event-store"
+      }
+    ],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict what happens",
+        "text": "A growing event store no longer fits comfortably on one database. One customer generates half of all writes. What happens if you hash by tenant?"
+      },
+      {
+        "id": "failure",
+        "title": "Where the simple design breaks",
+        "text": "Hashing tenant IDs distributes tenants. All events for one tenant still land on a single shard, so a hot customer can exhaust that shard independently of fleet capacity."
+      },
+      {
+        "id": "design",
+        "title": "Change the architecture",
+        "text": "Choose a key from query and write patterns. Tenant-local reads favor tenant partitioning. Bucket the busiest tenants across shards if the dominant problem is write skew."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the trade-off",
+        "text": "Bucketing trades write throughput for query fan-out and complicates ordering. Define an ordering scope, plan resumable backfills, and compare shadow reads before switching a routing map."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "Why can hashing still produce a hot shard?",
+        "answer": "Hashing balances keys, while request volume can be concentrated on a single key."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "What does bucketing a busy tenant change?",
+        "answer": "Writes spread across buckets, while tenant-wide reads may query and merge multiple buckets."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "What must a resharding plan specify?",
+        "answer": "Routing ownership, backfill and catch-up, read verification, cutover and recovery if migration stalls."
+      }
+    ],
+    "atlas": {
+      "id": "tenant-event-store",
+      "title": "Tenant event store",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Event router",
+          "detail": "Maps tenant and bucket to the current shard."
+        },
+        {
+          "id": "1",
+          "label": "Shard A",
+          "detail": "Stores one subset of tenant event buckets."
+        },
+        {
+          "id": "2",
+          "label": "Shard B",
+          "detail": "Stores another subset and can receive migrated buckets."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Route selected buckets"
+        },
+        {
+          "from": "0",
+          "to": "2",
+          "label": "Route selected buckets"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "0",
+          "label": "Balanced tenants",
+          "steps": [
+            "Router hashes the partition key.",
+            "Each write targets one shard."
+          ]
+        },
+        {
+          "id": "1",
+          "label": "Hot tenant",
+          "steps": [
+            "A tenant dominates one shard.",
+            "Multiple buckets spread its writes.",
+            "Tenant-wide reads merge bucket results."
+          ]
+        },
+        {
+          "id": "2",
+          "label": "Resharding",
+          "steps": [
+            "Copy and catch up the moved bucket.",
+            "Verify reads against the target.",
+            "Switch routing after ownership is agreed."
+          ]
+        }
+      ]
+    }
+  }
+]
