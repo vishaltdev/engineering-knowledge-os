@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
 
@@ -109,27 +109,87 @@ function Review({ concept }: { concept: Concept }) {
   </>;
 }
 
-function ArchitectureDiagram({ atlas }: { atlas: Atlas }) {
-  const labels = new Map(atlas.nodes.map(node => [node.id, node.label]));
+function ArchitectureDiagram({ atlas, selected, onSelect }: {
+  atlas: Atlas; selected?: string; onSelect?: (id: string) => void;
+}) {
+  const arrow = useId();
+  const layers: Atlas["nodes"][] = [];
+  const positions = new Map<string, { x: number; y: number; label: string }>();
+  let remaining = atlas.nodes;
+  while (remaining.length) {
+    const ready = remaining.filter(node => atlas.edges.every(edge =>
+      edge.to !== node.id || positions.has(edge.from)
+    ));
+    const layer = ready.length ? ready : [remaining[0]];
+    const y = 20 + layers.length * 115;
+    layer.forEach((node, index) => positions.set(node.id, {
+      x: (index + 0.5) * 180 + Math.max(0, 360 - layer.length * 180) / 2,
+      y,
+      label: node.label,
+    }));
+    layers.push(layer);
+    remaining = remaining.filter(node => !positions.has(node.id));
+  }
+  const width = Math.max(360, ...layers.map(layer => layer.length * 180));
+  const height = layers.length * 115 - 30;
+  // Center shorter rows within the widest row.
+  for (const layer of layers) {
+    const offset = (width - Math.max(360, layer.length * 180)) / 2;
+    layer.forEach(node => { positions.get(node.id)!.x += offset; });
+  }
   return <figure className="architecture">
-    <figcaption>{atlas.title} · architecture flow</figcaption>
-    <ol>{atlas.edges.map((edge, index) => <li key={index}>
-      <strong>{labels.get(edge.from)}</strong>
-      <span className="connection"><span>{edge.label}</span><span aria-hidden="true"> → </span><span className="sr-only"> to </span></span>
-      <strong>{labels.get(edge.to)}</strong>
-    </li>)}</ol>
+    <figcaption>{atlas.title} · architecture map</figcaption>
+    {onSelect && <p className="diagram-hint">Select a component to see what it does.</p>}
+    <div className="diagram-scroll">
+      <svg className="diagram" viewBox={`0 0 ${width} ${height}`} style={{ width: width + "px" }}
+        role="group" aria-label="Architecture map. Numbered connections are described below.">
+        <defs><marker id={arrow} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
+        </marker></defs>
+        {atlas.edges.map((edge, index) => {
+          const from = positions.get(edge.from);
+          const to = positions.get(edge.to);
+          if (!from || !to) return null;
+          const forward = to.y > from.y;
+          const start = from.y + (forward ? 50 : 0);
+          const end = to.y + (forward ? 0 : 50);
+          const middle = (start + end) / 2;
+          const badgeX = (from.x + to.x) / 2;
+          const active = selected === edge.from || selected === edge.to;
+          return <g key={index} className={active ? "diagram-edge active" : "diagram-edge"} aria-hidden="true">
+            <path d={`M ${from.x} ${start} C ${from.x} ${middle}, ${to.x} ${middle}, ${to.x} ${end}`}
+              markerEnd={`url(#${arrow})`} />
+            <circle cx={badgeX} cy={middle} r="11" />
+            <text x={badgeX} y={middle} textAnchor="middle" dominantBaseline="central">{index + 1}</text>
+          </g>;
+        })}
+        {atlas.nodes.map(node => {
+          const { x, y } = positions.get(node.id)!;
+          return <foreignObject key={node.id} x={x - 77} y={y} width="154" height="50">
+            {onSelect
+              ? <button className="diagram-node" aria-pressed={selected === node.id} onClick={() => onSelect(node.id)}>{node.label}</button>
+              : <span className="diagram-node">{node.label}</span>}
+          </foreignObject>;
+        })}
+      </svg>
+    </div>
+    <ol className="diagram-legend" aria-label="Diagram connections">
+      {atlas.edges.map((edge, index) => <li key={index}>
+        <strong>{edge.label}</strong>
+        <span>{positions.get(edge.from)?.label} → {positions.get(edge.to)?.label}</span>
+      </li>)}
+    </ol>
   </figure>;
 }
 
 function AtlasView({ concept }: { concept: Concept }) {
   const { atlas } = concept;
-  const [node, setNode] = useState(atlas.nodes[0]);
+  const [node, setNode] = useState(atlas.nodes[0].id);
   const [scenario, setScenario] = useState(atlas.scenarios[0]);
   return <><p className="eyebrow">Component Atlas</p><h1>{atlas.title}</h1>
-    <section><h2>Components</h2><div className="controls">{atlas.nodes.map(item =>
-      <button key={item.id} aria-pressed={node.id === item.id} onClick={() => setNode(item)}>{item.label}</button>
-    )}</div><p aria-live="polite">{node.detail}</p>
-      <ArchitectureDiagram atlas={atlas} />
+    <section><h2>Components</h2>
+      <ArchitectureDiagram atlas={atlas} selected={node} onSelect={setNode} />
+      <p className="diagram-detail" aria-live="polite">{atlas.nodes.find(item => item.id === node)?.detail}</p>
     </section>
     <section><h2>Trace a request</h2><div className="controls">{atlas.scenarios.map(item =>
       <button key={item.id} aria-pressed={scenario.id === item.id} onClick={() => setScenario(item)}>{item.label}</button>
