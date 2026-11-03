@@ -772,5 +772,127 @@
         }
       ]
     }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "circuit-breakers",
+    "revision": 1,
+    "title": "Circuit breakers",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "When a dependency stalls",
+        "text": "A checkout service asks a recommendations API for optional product suggestions. The dependency starts taking seconds to respond. Checkout workers fill up even though the order database is healthy. Where would you cut the failure path?"
+      },
+      {
+        "id": "failure",
+        "title": "What timeouts leave behind",
+        "text": "A timeout limits one call. Under sustained failure, incoming requests can still spend their entire timeout waiting, and retries can increase load on the struggling dependency. Bound concurrency and stop sending most calls while the dependency is unhealthy."
+      },
+      {
+        "id": "design",
+        "title": "Open the circuit and test recovery",
+        "text": "In the closed state, forward calls and measure eligible failures over a rolling window. Open after a minimum sample and failure threshold are met. While open, fail fast or omit optional recommendations. After a cooldown, move to half-open and allow a bounded number of probes. Close after sufficient successful probes, or reopen when probes fail."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Set boundaries and protect correctness",
+        "text": "Scope the circuit to a dependency operation or failure domain. Exclude caller errors from the failure count and combine the breaker with deadlines and a concurrency limit. Omit optional recommendations safely. If payment authorization is unavailable, surface the unavailable or unknown outcome according to the payment contract. Track state changes, rejected calls, probe outcomes and checkout latency."
+      }
+    ],
+    "links": [],
+    "cards": [
+      {
+        "id": "timeouts",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "Why can checkout still slow down when every downstream call has a timeout?",
+        "answer": "During sustained failure, many simultaneous calls can each wait up to the timeout. A circuit breaker rejects most calls quickly after detecting failures, while a concurrency limit caps outstanding work."
+      },
+      {
+        "id": "half-open",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "Why does the breaker limit calls in the half-open state?",
+        "answer": "A small set of probes tests recovery without sending the full backlog. Probe success can close the circuit and a failed probe can reopen it."
+      },
+      {
+        "id": "fallback",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "Can checkout use the same fallback for recommendations and payment authorization?",
+        "answer": "Recommendations are optional and can be omitted. Payment authorization has a correctness requirement, so checkout must follow the payment contract for unavailable or unknown outcomes."
+      }
+    ],
+    "atlas": {
+      "id": "checkout-resilience",
+      "title": "Checkout dependency resilience",
+      "nodes": [
+        {
+          "id": "checkout",
+          "label": "Checkout API",
+          "detail": "Applies the caller deadline and decides whether missing recommendations are acceptable."
+        },
+        {
+          "id": "breaker",
+          "label": "Circuit breaker",
+          "detail": "Tracks eligible failures, rejects calls while open and admits bounded recovery probes."
+        },
+        {
+          "id": "recommendations",
+          "label": "Recommendations API",
+          "detail": "Provides optional suggestions and can recover independently of checkout."
+        }
+      ],
+      "edges": [
+        {
+          "from": "checkout",
+          "to": "breaker",
+          "label": "Request optional suggestions"
+        },
+        {
+          "from": "breaker",
+          "to": "recommendations",
+          "label": "Forward admitted calls and probes"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "healthy",
+          "label": "Healthy dependency",
+          "steps": [
+            "The breaker is closed.",
+            "Suggestions return before the call deadline.",
+            "Checkout includes the suggestions."
+          ]
+        },
+        {
+          "id": "outage",
+          "label": "Sustained timeouts",
+          "steps": [
+            "Eligible timeouts cross the threshold after enough calls.",
+            "The circuit opens and rejects new recommendation calls quickly.",
+            "Checkout continues without suggestions."
+          ]
+        },
+        {
+          "id": "recovery",
+          "label": "Recovery probe",
+          "steps": [
+            "The cooldown ends.",
+            "The half-open breaker admits a bounded set of probes.",
+            "Successful probes close the circuit. A failed probe can reopen it."
+          ]
+        }
+      ]
+    }
   }
 ]
