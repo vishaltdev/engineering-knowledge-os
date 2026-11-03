@@ -59,6 +59,7 @@ function App() {
         <section><h2>{concept.lesson[0].title}</h2><p>{concept.lesson[0].text}</p></section>
         <details><summary>Reveal the design</summary>
           {concept.lesson.slice(1).map(stage => <section key={stage.id}><h2>{stage.title}</h2><p>{stage.text}</p></section>)}
+          <ArchitectureDiagram atlas={concept.atlas} />
           <ul>{concept.sources.map(source => <li key={source.id}>{source.url ? <a href={source.url}>{source.label}</a> : source.label}</li>)}</ul>
         </details>
         <p><a href={href(concept.id, "review")}>Practice recall</a> · <a href={href(concept.id, "atlas")}>Open Component Atlas</a></p>
@@ -108,6 +109,18 @@ function Review({ concept }: { concept: Concept }) {
   </>;
 }
 
+function ArchitectureDiagram({ atlas }: { atlas: Atlas }) {
+  const labels = new Map(atlas.nodes.map(node => [node.id, node.label]));
+  return <figure className="architecture">
+    <figcaption>{atlas.title} · architecture flow</figcaption>
+    <ol>{atlas.edges.map((edge, index) => <li key={index}>
+      <strong>{labels.get(edge.from)}</strong>
+      <span className="connection"><span>{edge.label}</span><span aria-hidden="true"> → </span><span className="sr-only"> to </span></span>
+      <strong>{labels.get(edge.to)}</strong>
+    </li>)}</ol>
+  </figure>;
+}
+
 function AtlasView({ concept }: { concept: Concept }) {
   const { atlas } = concept;
   const [node, setNode] = useState(atlas.nodes[0]);
@@ -116,7 +129,7 @@ function AtlasView({ concept }: { concept: Concept }) {
     <section><h2>Components</h2><div className="controls">{atlas.nodes.map(item =>
       <button key={item.id} aria-pressed={node.id === item.id} onClick={() => setNode(item)}>{item.label}</button>
     )}</div><p aria-live="polite">{node.detail}</p>
-      <ul>{atlas.edges.map(edge => <li key={edge.from + edge.to}>{atlas.nodes.find(item => item.id === edge.from)?.label} → {atlas.nodes.find(item => item.id === edge.to)?.label} · {edge.label}</li>)}</ul>
+      <ArchitectureDiagram atlas={atlas} />
     </section>
     <section><h2>Trace a request</h2><div className="controls">{atlas.scenarios.map(item =>
       <button key={item.id} aria-pressed={scenario.id === item.id} onClick={() => setScenario(item)}>{item.label}</button>
