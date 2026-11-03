@@ -33,7 +33,7 @@ function App() {
   useEffect(() => {
     const onRoute = () => setRoute(route());
     window.addEventListener("hashchange", onRoute);
-    fetch("/api/concepts").then(response => {
+    fetch("./concepts.json").then(response => {
       if (!response.ok) throw new Error("Catalog unavailable");
       return response.json();
     }).then(setCatalog).catch(() => setError(true));
@@ -128,6 +128,6 @@ function AtlasView({ concept }: { concept: Concept }) {
 createRoot(document.getElementById("root")!).render(<App />);
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(console.error);
+    navigator.serviceWorker.register("./sw.js").catch(console.error);
   });
 }
