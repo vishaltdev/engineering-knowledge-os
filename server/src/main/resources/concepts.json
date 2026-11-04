@@ -1984,5 +1984,2608 @@
         }
       ]
     }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "quorum-consistency",
+    "revision": 1,
+    "title": "Quorum reads and writes",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "A configuration store has three replicas. A write reaches two replicas before one becomes unreachable. Can a subsequent read return the old configuration?"
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "With N replicas, choose read and write quorum sizes R and W. R + W > N creates an overlap under a fixed replica set. Overlap alone does not implement a linearizable register: concurrent versions, sloppy quorums and membership changes require additional protocol rules."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Store a version with each value. Collect responses from R eligible replicas, resolve versions using a documented rule and repair stale copies. Writes wait for W durable acknowledgements. For N=3, R=2 and W=2 can tolerate one unavailable replica for each operation, assuming the same eligible replica set."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "A partition that leaves one replica isolated cannot satisfy a two-replica quorum there. Return an availability error rather than silently weakening the consistency contract. A timeout leaves a write outcome uncertain because replicas may already have accepted it."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Measure quorum latency and unavailable-quorum errors separately. Tail latency is governed by the required response order statistic, and cross-region placement adds network delay. State explicitly whether clients need linearizable updates or merely version reconciliation."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Read coordinator to Replica set: send quorum requests. Then follow Replica set to Version resolver: resolve returned versions. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Quorum reads and writes, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "With N replicas, choose read and write quorum sizes R and W. R + W > N creates an overlap under a fixed replica set. Overlap alone does not implement a linearizable register: concurrent versions, sloppy quorums and membership changes require additional protocol rules."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: A configuration store has three replicas. A write reaches two replicas before one becomes unreachable. Can a subsequent read return the old configuration?",
+        "answer": "Store a version with each value. Collect responses from R eligible replicas, resolve versions using a documented rule and repair stale copies. Writes wait for W durable acknowledgements. For N=3, R=2 and W=2 can tolerate one unavailable replica for each operation, assuming the same eligible replica set."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Quorum reads and writes, and how should you respond?",
+        "answer": "A partition that leaves one replica isolated cannot satisfy a two-replica quorum there. Return an availability error rather than silently weakening the consistency contract. A timeout leaves a write outcome uncertain because replicas may already have accepted it."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Quorum reads and writes, and what would you measure?",
+        "answer": "Measure quorum latency and unavailable-quorum errors separately. Tail latency is governed by the required response order statistic, and cross-region placement adds network delay. State explicitly whether clients need linearizable updates or merely version reconciliation."
+      }
+    ],
+    "atlas": {
+      "id": "quorum-consistency-flow",
+      "title": "Quorum reads and writes",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Read coordinator",
+          "detail": "With N replicas, choose read and write quorum sizes R and W. R + W > N creates an overlap under a fixed replica set. Overlap alone does not implement a linearizable register: concurrent versions, sloppy quorums and membership changes require additional protocol rules."
+        },
+        {
+          "id": "1",
+          "label": "Replica set",
+          "detail": "Store a version with each value. Collect responses from R eligible replicas, resolve versions using a documented rule and repair stale copies. Writes wait for W durable acknowledgements. For N=3, R=2 and W=2 can tolerate one unavailable replica for each operation, assuming the same eligible replica set."
+        },
+        {
+          "id": "2",
+          "label": "Version resolver",
+          "detail": "Measure quorum latency and unavailable-quorum errors separately. Tail latency is governed by the required response order statistic, and cross-region placement adds network delay. State explicitly whether clients need linearizable updates or merely version reconciliation."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Send quorum requests"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Resolve returned versions"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "A configuration store has three replicas. A write reaches two replicas before one becomes unreachable. Can a subsequent read return the old configuration?",
+            "Store a version with each value. Collect responses from R eligible replicas, resolve versions using a documented rule and repair stale copies. Writes wait for W durable acknowledgements. For N=3, R=2 and W=2 can tolerate one unavailable replica for each operation, assuming the same eligible replica set."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "With N replicas, choose read and write quorum sizes R and W. R + W > N creates an overlap under a fixed replica set. Overlap alone does not implement a linearizable register: concurrent versions, sloppy quorums and membership changes require additional protocol rules.",
+            "A partition that leaves one replica isolated cannot satisfy a two-replica quorum there. Return an availability error rather than silently weakening the consistency contract. A timeout leaves a write outcome uncertain because replicas may already have accepted it."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Measure quorum latency and unavailable-quorum errors separately. Tail latency is governed by the required response order statistic, and cross-region placement adds network delay. State explicitly whether clients need linearizable updates or merely version reconciliation.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "optimistic-concurrency",
+    "revision": 1,
+    "title": "Optimistic concurrency control",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "Two administrators edit the same consent policy from version 12. Both submit valid changes. How do you prevent the second edit from silently overwriting the first?"
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "An ordinary read followed by an unconditional update loses concurrent changes. Use a version predicate so detecting a conflict and changing the row happen in one database operation."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Execute UPDATE policy SET body=?, version=version+1 WHERE id=? AND version=12. Require exactly one affected row. Return a conflict or failed precondition when the count is zero. Carry the version through the API, for example with an ETag and conditional update."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "Retrying with the same stale version will keep failing. Reload and merge only when domain semantics allow it. For a transaction touching multiple rows, a single row version does not protect invariants involving other rows."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Track conflict rate and retry cost. Optimistic control is attractive when contention is low and edits are independent. Under sustained contention, serialize access to the hot aggregate or redesign it to reduce shared updates."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Editor to Conditional update: submit expected version. Then follow Conditional update to Versioned row: update only if version matches. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Optimistic concurrency control, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "An ordinary read followed by an unconditional update loses concurrent changes. Use a version predicate so detecting a conflict and changing the row happen in one database operation."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: Two administrators edit the same consent policy from version 12. Both submit valid changes. How do you prevent the second edit from silently overwriting the first?",
+        "answer": "Execute UPDATE policy SET body=?, version=version+1 WHERE id=? AND version=12. Require exactly one affected row. Return a conflict or failed precondition when the count is zero. Carry the version through the API, for example with an ETag and conditional update."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Optimistic concurrency control, and how should you respond?",
+        "answer": "Retrying with the same stale version will keep failing. Reload and merge only when domain semantics allow it. For a transaction touching multiple rows, a single row version does not protect invariants involving other rows."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Optimistic concurrency control, and what would you measure?",
+        "answer": "Track conflict rate and retry cost. Optimistic control is attractive when contention is low and edits are independent. Under sustained contention, serialize access to the hot aggregate or redesign it to reduce shared updates."
+      }
+    ],
+    "atlas": {
+      "id": "optimistic-concurrency-flow",
+      "title": "Optimistic concurrency control",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Editor",
+          "detail": "An ordinary read followed by an unconditional update loses concurrent changes. Use a version predicate so detecting a conflict and changing the row happen in one database operation."
+        },
+        {
+          "id": "1",
+          "label": "Conditional update",
+          "detail": "Execute UPDATE policy SET body=?, version=version+1 WHERE id=? AND version=12. Require exactly one affected row. Return a conflict or failed precondition when the count is zero. Carry the version through the API, for example with an ETag and conditional update."
+        },
+        {
+          "id": "2",
+          "label": "Versioned row",
+          "detail": "Track conflict rate and retry cost. Optimistic control is attractive when contention is low and edits are independent. Under sustained contention, serialize access to the hot aggregate or redesign it to reduce shared updates."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Submit expected version"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Update only if version matches"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "Two administrators edit the same consent policy from version 12. Both submit valid changes. How do you prevent the second edit from silently overwriting the first?",
+            "Execute UPDATE policy SET body=?, version=version+1 WHERE id=? AND version=12. Require exactly one affected row. Return a conflict or failed precondition when the count is zero. Carry the version through the API, for example with an ETag and conditional update."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "An ordinary read followed by an unconditional update loses concurrent changes. Use a version predicate so detecting a conflict and changing the row happen in one database operation.",
+            "Retrying with the same stale version will keep failing. Reload and merge only when domain semantics allow it. For a transaction touching multiple rows, a single row version does not protect invariants involving other rows."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Track conflict rate and retry cost. Optimistic control is attractive when contention is low and edits are independent. Under sustained contention, serialize access to the hot aggregate or redesign it to reduce shared updates.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "transaction-isolation",
+    "revision": 1,
+    "title": "Transaction isolation and write skew",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "Two doctors each see that the other is on call, then independently remove themselves from the rota. Both transactions commit and nobody remains on call."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "Snapshot isolation can prevent many direct write conflicts while allowing write skew when transactions read overlapping data but update different rows. Repeatable reads alone do not establish every cross-row invariant."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Model the invariant before choosing isolation. Use serializable transactions with whole-transaction retries, or lock a shared rota guard row before reading and changing the assignments. Every writer must follow the same locking convention."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "A serialization failure can arrive at commit. Roll back and retry the entire transaction with fresh reads, bounded attempts and jitter. Keep external network side effects outside the retrying transaction or give them durable operation identities."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Measure abort rate, lock wait time and transaction duration. A guard row can become a throughput bottleneck. Serializable behavior varies by database, so verify the engine's actual isolation guarantees."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Transaction A to Invariant guard: acquire shared coordination point. Then follow Invariant guard to Rota records: read and update the protected invariant. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Transaction isolation and write skew, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "Snapshot isolation can prevent many direct write conflicts while allowing write skew when transactions read overlapping data but update different rows. Repeatable reads alone do not establish every cross-row invariant."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: Two doctors each see that the other is on call, then independently remove themselves from the rota. Both transactions commit and nobody remains on call.",
+        "answer": "Model the invariant before choosing isolation. Use serializable transactions with whole-transaction retries, or lock a shared rota guard row before reading and changing the assignments. Every writer must follow the same locking convention."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Transaction isolation and write skew, and how should you respond?",
+        "answer": "A serialization failure can arrive at commit. Roll back and retry the entire transaction with fresh reads, bounded attempts and jitter. Keep external network side effects outside the retrying transaction or give them durable operation identities."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Transaction isolation and write skew, and what would you measure?",
+        "answer": "Measure abort rate, lock wait time and transaction duration. A guard row can become a throughput bottleneck. Serializable behavior varies by database, so verify the engine's actual isolation guarantees."
+      }
+    ],
+    "atlas": {
+      "id": "transaction-isolation-flow",
+      "title": "Transaction isolation and write skew",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Transaction A",
+          "detail": "Snapshot isolation can prevent many direct write conflicts while allowing write skew when transactions read overlapping data but update different rows. Repeatable reads alone do not establish every cross-row invariant."
+        },
+        {
+          "id": "1",
+          "label": "Invariant guard",
+          "detail": "Model the invariant before choosing isolation. Use serializable transactions with whole-transaction retries, or lock a shared rota guard row before reading and changing the assignments. Every writer must follow the same locking convention."
+        },
+        {
+          "id": "2",
+          "label": "Rota records",
+          "detail": "Measure abort rate, lock wait time and transaction duration. A guard row can become a throughput bottleneck. Serializable behavior varies by database, so verify the engine's actual isolation guarantees."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Acquire shared coordination point"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Read and update the protected invariant"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "Two doctors each see that the other is on call, then independently remove themselves from the rota. Both transactions commit and nobody remains on call.",
+            "Model the invariant before choosing isolation. Use serializable transactions with whole-transaction retries, or lock a shared rota guard row before reading and changing the assignments. Every writer must follow the same locking convention."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "Snapshot isolation can prevent many direct write conflicts while allowing write skew when transactions read overlapping data but update different rows. Repeatable reads alone do not establish every cross-row invariant.",
+            "A serialization failure can arrive at commit. Roll back and retry the entire transaction with fresh reads, bounded attempts and jitter. Keep external network side effects outside the retrying transaction or give them durable operation identities."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Measure abort rate, lock wait time and transaction duration. A guard row can become a throughput bottleneck. Serializable behavior varies by database, so verify the engine's actual isolation guarantees.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "database-indexes",
+    "revision": 1,
+    "title": "Composite database indexes",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "A tenant's event history query filters by tenant, orders by creation time and returns 50 rows, but latency grows with the whole table."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "An index maps an ordered key to row locations or covered values. Composite key order determines which predicates and ordering can be served efficiently. An index on creation time alone may scan many other tenants' rows."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "For WHERE tenant_id=? ORDER BY created_at DESC, id DESC LIMIT 50, evaluate an index on (tenant_id, created_at DESC, id DESC). The stable tie-breaker supports deterministic pagination. Inspect the actual execution plan and rows scanned rather than relying on index existence."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "Every insert and indexed-column update pays maintenance cost. Large covering indexes consume memory and write bandwidth. Statistics drift can change plan selection. Build large indexes using the engine's supported online method and monitor replication lag."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Compare p95 latency, logical reads and write overhead using realistic tenant skew. Avoid indexing every field. Choose columns from a measured access pattern and remove redundant indexes only after checking all callers."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Query planner to Composite index: select an access path. Then follow Composite index to Table rows: locate matching rows. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Composite database indexes, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "An index maps an ordered key to row locations or covered values. Composite key order determines which predicates and ordering can be served efficiently. An index on creation time alone may scan many other tenants' rows."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: A tenant's event history query filters by tenant, orders by creation time and returns 50 rows, but latency grows with the whole table.",
+        "answer": "For WHERE tenant_id=? ORDER BY created_at DESC, id DESC LIMIT 50, evaluate an index on (tenant_id, created_at DESC, id DESC). The stable tie-breaker supports deterministic pagination. Inspect the actual execution plan and rows scanned rather than relying on index existence."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Composite database indexes, and how should you respond?",
+        "answer": "Every insert and indexed-column update pays maintenance cost. Large covering indexes consume memory and write bandwidth. Statistics drift can change plan selection. Build large indexes using the engine's supported online method and monitor replication lag."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Composite database indexes, and what would you measure?",
+        "answer": "Compare p95 latency, logical reads and write overhead using realistic tenant skew. Avoid indexing every field. Choose columns from a measured access pattern and remove redundant indexes only after checking all callers."
+      }
+    ],
+    "atlas": {
+      "id": "database-indexes-flow",
+      "title": "Composite database indexes",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Query planner",
+          "detail": "An index maps an ordered key to row locations or covered values. Composite key order determines which predicates and ordering can be served efficiently. An index on creation time alone may scan many other tenants' rows."
+        },
+        {
+          "id": "1",
+          "label": "Composite index",
+          "detail": "For WHERE tenant_id=? ORDER BY created_at DESC, id DESC LIMIT 50, evaluate an index on (tenant_id, created_at DESC, id DESC). The stable tie-breaker supports deterministic pagination. Inspect the actual execution plan and rows scanned rather than relying on index existence."
+        },
+        {
+          "id": "2",
+          "label": "Table rows",
+          "detail": "Compare p95 latency, logical reads and write overhead using realistic tenant skew. Avoid indexing every field. Choose columns from a measured access pattern and remove redundant indexes only after checking all callers."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Select an access path"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Locate matching rows"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "A tenant's event history query filters by tenant, orders by creation time and returns 50 rows, but latency grows with the whole table.",
+            "For WHERE tenant_id=? ORDER BY created_at DESC, id DESC LIMIT 50, evaluate an index on (tenant_id, created_at DESC, id DESC). The stable tie-breaker supports deterministic pagination. Inspect the actual execution plan and rows scanned rather than relying on index existence."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "An index maps an ordered key to row locations or covered values. Composite key order determines which predicates and ordering can be served efficiently. An index on creation time alone may scan many other tenants' rows.",
+            "Every insert and indexed-column update pays maintenance cost. Large covering indexes consume memory and write bandwidth. Statistics drift can change plan selection. Build large indexes using the engine's supported online method and monitor replication lag."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Compare p95 latency, logical reads and write overhead using realistic tenant skew. Avoid indexing every field. Choose columns from a measured access pattern and remove redundant indexes only after checking all callers.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "keyset-pagination",
+    "revision": 1,
+    "title": "Keyset pagination",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "An event feed uses OFFSET 500000 LIMIT 50. Deep pages are slow and new inserts cause users to see duplicates between pages."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "Offset pagination must skip earlier results and pages shift as the dataset changes. A keyset cursor anchors the next query to the last ordering tuple instead of a row count."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Order by (created_at DESC, id DESC). For the next page filter tenant_id=? AND (created_at,id) < (?,?), and retain the same order and limit. Encode the last tuple and filter identity into an opaque cursor and validate them on every request."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "Updates to the ordering field can move rows across the cursor. Define whether the feed is a live view or a snapshot. Use an immutable sequence or a snapshot watermark when stable traversal is required."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Keyset pagination handles sequential browsing well but does not naturally jump to page 1000. Sign cursors to detect tampering and enforce page-size bounds. Preserve authorization checks independently of cursor contents."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Client cursor to Ordered query: submit last ordering tuple. Then follow Ordered query to Composite index: seek directly to the next range. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Keyset pagination, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "Offset pagination must skip earlier results and pages shift as the dataset changes. A keyset cursor anchors the next query to the last ordering tuple instead of a row count."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: An event feed uses OFFSET 500000 LIMIT 50. Deep pages are slow and new inserts cause users to see duplicates between pages.",
+        "answer": "Order by (created_at DESC, id DESC). For the next page filter tenant_id=? AND (created_at,id) < (?,?), and retain the same order and limit. Encode the last tuple and filter identity into an opaque cursor and validate them on every request."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Keyset pagination, and how should you respond?",
+        "answer": "Updates to the ordering field can move rows across the cursor. Define whether the feed is a live view or a snapshot. Use an immutable sequence or a snapshot watermark when stable traversal is required."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Keyset pagination, and what would you measure?",
+        "answer": "Keyset pagination handles sequential browsing well but does not naturally jump to page 1000. Sign cursors to detect tampering and enforce page-size bounds. Preserve authorization checks independently of cursor contents."
+      }
+    ],
+    "atlas": {
+      "id": "keyset-pagination-flow",
+      "title": "Keyset pagination",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Client cursor",
+          "detail": "Offset pagination must skip earlier results and pages shift as the dataset changes. A keyset cursor anchors the next query to the last ordering tuple instead of a row count."
+        },
+        {
+          "id": "1",
+          "label": "Ordered query",
+          "detail": "Order by (created_at DESC, id DESC). For the next page filter tenant_id=? AND (created_at,id) < (?,?), and retain the same order and limit. Encode the last tuple and filter identity into an opaque cursor and validate them on every request."
+        },
+        {
+          "id": "2",
+          "label": "Composite index",
+          "detail": "Keyset pagination handles sequential browsing well but does not naturally jump to page 1000. Sign cursors to detect tampering and enforce page-size bounds. Preserve authorization checks independently of cursor contents."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Submit last ordering tuple"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Seek directly to the next range"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "An event feed uses OFFSET 500000 LIMIT 50. Deep pages are slow and new inserts cause users to see duplicates between pages.",
+            "Order by (created_at DESC, id DESC). For the next page filter tenant_id=? AND (created_at,id) < (?,?), and retain the same order and limit. Encode the last tuple and filter identity into an opaque cursor and validate them on every request."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "Offset pagination must skip earlier results and pages shift as the dataset changes. A keyset cursor anchors the next query to the last ordering tuple instead of a row count.",
+            "Updates to the ordering field can move rows across the cursor. Define whether the feed is a live view or a snapshot. Use an immutable sequence or a snapshot watermark when stable traversal is required."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Keyset pagination handles sequential browsing well but does not naturally jump to page 1000. Sign cursors to detect tampering and enforce page-size bounds. Preserve authorization checks independently of cursor contents.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "cdc",
+    "revision": 1,
+    "title": "Change data capture",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "A search index must reflect database updates within seconds without making every application writer publish an extra event."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "Polling timestamps can miss deletes and interact poorly with long transactions. Log-based change data capture reads committed changes from the database log and tracks a durable source position."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Take a consistent initial snapshot paired with a log position, then stream changes after that point. Preserve primary keys, operation types and source positions. Apply updates idempotently to the sink and record progress only after the corresponding changes are durable."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "A consumer can crash after updating the sink but before saving its offset, so replay is expected. Lost log retention can force a resnapshot. Schema changes need coordinated compatibility handling, particularly renames and type changes."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Alert on source-to-sink lag, connector errors and log retention headroom. CDC exposes storage-level changes; use an outbox when consumers need deliberately authored business events."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Database log to CDC connector: stream committed log records. Then follow CDC connector to Search index: apply replay-safe document updates. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Change data capture, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "Polling timestamps can miss deletes and interact poorly with long transactions. Log-based change data capture reads committed changes from the database log and tracks a durable source position."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: A search index must reflect database updates within seconds without making every application writer publish an extra event.",
+        "answer": "Take a consistent initial snapshot paired with a log position, then stream changes after that point. Preserve primary keys, operation types and source positions. Apply updates idempotently to the sink and record progress only after the corresponding changes are durable."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Change data capture, and how should you respond?",
+        "answer": "A consumer can crash after updating the sink but before saving its offset, so replay is expected. Lost log retention can force a resnapshot. Schema changes need coordinated compatibility handling, particularly renames and type changes."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Change data capture, and what would you measure?",
+        "answer": "Alert on source-to-sink lag, connector errors and log retention headroom. CDC exposes storage-level changes; use an outbox when consumers need deliberately authored business events."
+      }
+    ],
+    "atlas": {
+      "id": "cdc-flow",
+      "title": "Change data capture",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Database log",
+          "detail": "Polling timestamps can miss deletes and interact poorly with long transactions. Log-based change data capture reads committed changes from the database log and tracks a durable source position."
+        },
+        {
+          "id": "1",
+          "label": "CDC connector",
+          "detail": "Take a consistent initial snapshot paired with a log position, then stream changes after that point. Preserve primary keys, operation types and source positions. Apply updates idempotently to the sink and record progress only after the corresponding changes are durable."
+        },
+        {
+          "id": "2",
+          "label": "Search index",
+          "detail": "Alert on source-to-sink lag, connector errors and log retention headroom. CDC exposes storage-level changes; use an outbox when consumers need deliberately authored business events."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Stream committed log records"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Apply replay-safe document updates"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "A search index must reflect database updates within seconds without making every application writer publish an extra event.",
+            "Take a consistent initial snapshot paired with a log position, then stream changes after that point. Preserve primary keys, operation types and source positions. Apply updates idempotently to the sink and record progress only after the corresponding changes are durable."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "Polling timestamps can miss deletes and interact poorly with long transactions. Log-based change data capture reads committed changes from the database log and tracks a durable source position.",
+            "A consumer can crash after updating the sink but before saving its offset, so replay is expected. Lost log retention can force a resnapshot. Schema changes need coordinated compatibility handling, particularly renames and type changes."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Alert on source-to-sink lag, connector errors and log retention headroom. CDC exposes storage-level changes; use an outbox when consumers need deliberately authored business events.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "transactional-outbox",
+    "revision": 1,
+    "title": "Transactional outbox",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "An order commits successfully but the process crashes before publishing OrderCreated. How do downstream services learn about the order?"
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "A database commit and a broker publish are separate writes. Put the order change and an outbox row in the same local transaction so the intent to publish survives a crash."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Write a stable event ID, aggregate ID, event type, schema version and payload into the outbox. A relay claims batches, publishes with bounded retries and records publication progress. Order events per aggregate when consumers depend on that order."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "The relay may publish and crash before marking the row sent. Consumers must tolerate duplicate event IDs. Concurrent relay workers need a safe claim protocol and lease recovery so abandoned work becomes eligible again."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Track oldest unpublished age and outbox size. Archive completed rows in batches. Avoid holding a database transaction open during a slow broker call. Distinguish committed business intent from confirmed consumer processing."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Order transaction to Outbox table: commit order and event intent together. Then follow Outbox table to Broker relay: publish durable pending events. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Transactional outbox, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "A database commit and a broker publish are separate writes. Put the order change and an outbox row in the same local transaction so the intent to publish survives a crash."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: An order commits successfully but the process crashes before publishing OrderCreated. How do downstream services learn about the order?",
+        "answer": "Write a stable event ID, aggregate ID, event type, schema version and payload into the outbox. A relay claims batches, publishes with bounded retries and records publication progress. Order events per aggregate when consumers depend on that order."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Transactional outbox, and how should you respond?",
+        "answer": "The relay may publish and crash before marking the row sent. Consumers must tolerate duplicate event IDs. Concurrent relay workers need a safe claim protocol and lease recovery so abandoned work becomes eligible again."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Transactional outbox, and what would you measure?",
+        "answer": "Track oldest unpublished age and outbox size. Archive completed rows in batches. Avoid holding a database transaction open during a slow broker call. Distinguish committed business intent from confirmed consumer processing."
+      }
+    ],
+    "atlas": {
+      "id": "transactional-outbox-flow",
+      "title": "Transactional outbox",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Order transaction",
+          "detail": "A database commit and a broker publish are separate writes. Put the order change and an outbox row in the same local transaction so the intent to publish survives a crash."
+        },
+        {
+          "id": "1",
+          "label": "Outbox table",
+          "detail": "Write a stable event ID, aggregate ID, event type, schema version and payload into the outbox. A relay claims batches, publishes with bounded retries and records publication progress. Order events per aggregate when consumers depend on that order."
+        },
+        {
+          "id": "2",
+          "label": "Broker relay",
+          "detail": "Track oldest unpublished age and outbox size. Archive completed rows in batches. Avoid holding a database transaction open during a slow broker call. Distinguish committed business intent from confirmed consumer processing."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Commit order and event intent together"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Publish durable pending events"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "An order commits successfully but the process crashes before publishing OrderCreated. How do downstream services learn about the order?",
+            "Write a stable event ID, aggregate ID, event type, schema version and payload into the outbox. A relay claims batches, publishes with bounded retries and records publication progress. Order events per aggregate when consumers depend on that order."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "A database commit and a broker publish are separate writes. Put the order change and an outbox row in the same local transaction so the intent to publish survives a crash.",
+            "The relay may publish and crash before marking the row sent. Consumers must tolerate duplicate event IDs. Concurrent relay workers need a safe claim protocol and lease recovery so abandoned work becomes eligible again."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Track oldest unpublished age and outbox size. Archive completed rows in batches. Avoid holding a database transaction open during a slow broker call. Distinguish committed business intent from confirmed consumer processing.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "retry-budgets",
+    "revision": 1,
+    "title": "Retries, deadlines and jitter",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "A request crosses three services, each making up to three attempts. A partial outage turns a modest request rate into a retry storm."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "Retry amplification compounds across layers. Three attempts at each of three layers can generate up to 27 attempts at the deepest layer. Retry only transient failures and operations with a safe replay contract."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Set an end-to-end deadline and propagate the remaining budget. Assign retry ownership to one layer where possible. Use capped exponential backoff with randomized delay and stop when another attempt cannot fit within the remaining deadline."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "A timeout may hide a completed write. Preserve the same idempotency key across attempts. Do not retry validation errors or authorization failures. Bound the fraction of traffic spent on retries so recovery capacity remains available."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Observe original requests, retry attempts and successful recovery separately. A retry that completes after the caller deadline wastes resources. Cancellation must propagate as far as the downstream protocol permits."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Caller deadline to Retry controller: pass remaining time budget. Then follow Retry controller to Dependency: send a budgeted attempt. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Retries, deadlines and jitter, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "Retry amplification compounds across layers. Three attempts at each of three layers can generate up to 27 attempts at the deepest layer. Retry only transient failures and operations with a safe replay contract."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: A request crosses three services, each making up to three attempts. A partial outage turns a modest request rate into a retry storm.",
+        "answer": "Set an end-to-end deadline and propagate the remaining budget. Assign retry ownership to one layer where possible. Use capped exponential backoff with randomized delay and stop when another attempt cannot fit within the remaining deadline."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Retries, deadlines and jitter, and how should you respond?",
+        "answer": "A timeout may hide a completed write. Preserve the same idempotency key across attempts. Do not retry validation errors or authorization failures. Bound the fraction of traffic spent on retries so recovery capacity remains available."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Retries, deadlines and jitter, and what would you measure?",
+        "answer": "Observe original requests, retry attempts and successful recovery separately. A retry that completes after the caller deadline wastes resources. Cancellation must propagate as far as the downstream protocol permits."
+      }
+    ],
+    "atlas": {
+      "id": "retry-budgets-flow",
+      "title": "Retries, deadlines and jitter",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Caller deadline",
+          "detail": "Retry amplification compounds across layers. Three attempts at each of three layers can generate up to 27 attempts at the deepest layer. Retry only transient failures and operations with a safe replay contract."
+        },
+        {
+          "id": "1",
+          "label": "Retry controller",
+          "detail": "Set an end-to-end deadline and propagate the remaining budget. Assign retry ownership to one layer where possible. Use capped exponential backoff with randomized delay and stop when another attempt cannot fit within the remaining deadline."
+        },
+        {
+          "id": "2",
+          "label": "Dependency",
+          "detail": "Observe original requests, retry attempts and successful recovery separately. A retry that completes after the caller deadline wastes resources. Cancellation must propagate as far as the downstream protocol permits."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Pass remaining time budget"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Send a budgeted attempt"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "A request crosses three services, each making up to three attempts. A partial outage turns a modest request rate into a retry storm.",
+            "Set an end-to-end deadline and propagate the remaining budget. Assign retry ownership to one layer where possible. Use capped exponential backoff with randomized delay and stop when another attempt cannot fit within the remaining deadline."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "Retry amplification compounds across layers. Three attempts at each of three layers can generate up to 27 attempts at the deepest layer. Retry only transient failures and operations with a safe replay contract.",
+            "A timeout may hide a completed write. Preserve the same idempotency key across attempts. Do not retry validation errors or authorization failures. Bound the fraction of traffic spent on retries so recovery capacity remains available."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Observe original requests, retry attempts and successful recovery separately. A retry that completes after the caller deadline wastes resources. Cancellation must propagate as far as the downstream protocol permits.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "consistent-snapshots",
+    "revision": 1,
+    "title": "Consistent snapshots for backups",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "You copy a database's files while writes continue. The restored copy contains pages from different moments and fails recovery."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "A backup must represent a recoverable consistency point. Database-managed snapshots and log positions coordinate page copies with the records needed to recover transactions across the copy interval."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Use the database's supported online backup protocol. Retain the required transaction logs and metadata, encrypt the backup and record its consistency point. Verify the restore on an isolated environment using the same engine compatibility rules."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "A successful upload does not prove recoverability. Missing log segments, unavailable encryption keys or incompatible extensions can break restore. Test interrupted backup cleanup and recovery from the latest complete backup."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Define recovery point and recovery time objectives separately. Measure restore duration using production-scale data and validate application invariants after recovery. Keep backup deletion privileges isolated from ordinary application access."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Backup coordinator to Database snapshot: establish a recoverable point. Then follow Database snapshot to Backup storage: persist data and required recovery logs. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Consistent snapshots for backups, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "A backup must represent a recoverable consistency point. Database-managed snapshots and log positions coordinate page copies with the records needed to recover transactions across the copy interval."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: You copy a database's files while writes continue. The restored copy contains pages from different moments and fails recovery.",
+        "answer": "Use the database's supported online backup protocol. Retain the required transaction logs and metadata, encrypt the backup and record its consistency point. Verify the restore on an isolated environment using the same engine compatibility rules."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Consistent snapshots for backups, and how should you respond?",
+        "answer": "A successful upload does not prove recoverability. Missing log segments, unavailable encryption keys or incompatible extensions can break restore. Test interrupted backup cleanup and recovery from the latest complete backup."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Consistent snapshots for backups, and what would you measure?",
+        "answer": "Define recovery point and recovery time objectives separately. Measure restore duration using production-scale data and validate application invariants after recovery. Keep backup deletion privileges isolated from ordinary application access."
+      }
+    ],
+    "atlas": {
+      "id": "consistent-snapshots-flow",
+      "title": "Consistent snapshots for backups",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Backup coordinator",
+          "detail": "A backup must represent a recoverable consistency point. Database-managed snapshots and log positions coordinate page copies with the records needed to recover transactions across the copy interval."
+        },
+        {
+          "id": "1",
+          "label": "Database snapshot",
+          "detail": "Use the database's supported online backup protocol. Retain the required transaction logs and metadata, encrypt the backup and record its consistency point. Verify the restore on an isolated environment using the same engine compatibility rules."
+        },
+        {
+          "id": "2",
+          "label": "Backup storage",
+          "detail": "Define recovery point and recovery time objectives separately. Measure restore duration using production-scale data and validate application invariants after recovery. Keep backup deletion privileges isolated from ordinary application access."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Establish a recoverable point"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Persist data and required recovery logs"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "You copy a database's files while writes continue. The restored copy contains pages from different moments and fails recovery.",
+            "Use the database's supported online backup protocol. Retain the required transaction logs and metadata, encrypt the backup and record its consistency point. Verify the restore on an isolated environment using the same engine compatibility rules."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "A backup must represent a recoverable consistency point. Database-managed snapshots and log positions coordinate page copies with the records needed to recover transactions across the copy interval.",
+            "A successful upload does not prove recoverability. Missing log segments, unavailable encryption keys or incompatible extensions can break restore. Test interrupted backup cleanup and recovery from the latest complete backup."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Define recovery point and recovery time objectives separately. Measure restore duration using production-scale data and validate application invariants after recovery. Keep backup deletion privileges isolated from ordinary application access.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "leader-election",
+    "revision": 1,
+    "title": "Leader election and terms",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "Two scheduler instances each believe they are leader after a network partition. Both start the same scheduled work."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "A leader claim needs a protocol that prevents conflicting authority from being accepted. Consensus-based election uses terms or epochs and quorum agreement; local timers alone do not prove exclusive leadership."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Use a proven coordination system for election. Associate work ownership with an epoch and make the destination reject stale epochs when possible. Separate the role of leader selection from the safety of the operation the leader performs."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "A paused former leader can resume after replacement. It must learn that its epoch is stale, and the protected resource should enforce ownership. An election timeout causes temporary unavailability, not permission to invent a second authoritative leader."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Monitor election frequency, term changes and unavailable-quorum duration. Tune failure detection against network jitter and pauses. Explain why a lease without fencing may leave a stale actor able to affect external state."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Candidate to Quorum coordinator: acquire an election term. Then follow Quorum coordinator to Fenced worker: perform work with current authority. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Leader election and terms, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "A leader claim needs a protocol that prevents conflicting authority from being accepted. Consensus-based election uses terms or epochs and quorum agreement; local timers alone do not prove exclusive leadership."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: Two scheduler instances each believe they are leader after a network partition. Both start the same scheduled work.",
+        "answer": "Use a proven coordination system for election. Associate work ownership with an epoch and make the destination reject stale epochs when possible. Separate the role of leader selection from the safety of the operation the leader performs."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Leader election and terms, and how should you respond?",
+        "answer": "A paused former leader can resume after replacement. It must learn that its epoch is stale, and the protected resource should enforce ownership. An election timeout causes temporary unavailability, not permission to invent a second authoritative leader."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Leader election and terms, and what would you measure?",
+        "answer": "Monitor election frequency, term changes and unavailable-quorum duration. Tune failure detection against network jitter and pauses. Explain why a lease without fencing may leave a stale actor able to affect external state."
+      }
+    ],
+    "atlas": {
+      "id": "leader-election-flow",
+      "title": "Leader election and terms",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Candidate",
+          "detail": "A leader claim needs a protocol that prevents conflicting authority from being accepted. Consensus-based election uses terms or epochs and quorum agreement; local timers alone do not prove exclusive leadership."
+        },
+        {
+          "id": "1",
+          "label": "Quorum coordinator",
+          "detail": "Use a proven coordination system for election. Associate work ownership with an epoch and make the destination reject stale epochs when possible. Separate the role of leader selection from the safety of the operation the leader performs."
+        },
+        {
+          "id": "2",
+          "label": "Fenced worker",
+          "detail": "Monitor election frequency, term changes and unavailable-quorum duration. Tune failure detection against network jitter and pauses. Explain why a lease without fencing may leave a stale actor able to affect external state."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Acquire an election term"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Perform work with current authority"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "Two scheduler instances each believe they are leader after a network partition. Both start the same scheduled work.",
+            "Use a proven coordination system for election. Associate work ownership with an epoch and make the destination reject stale epochs when possible. Separate the role of leader selection from the safety of the operation the leader performs."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "A leader claim needs a protocol that prevents conflicting authority from being accepted. Consensus-based election uses terms or epochs and quorum agreement; local timers alone do not prove exclusive leadership.",
+            "A paused former leader can resume after replacement. It must learn that its epoch is stale, and the protected resource should enforce ownership. An election timeout causes temporary unavailability, not permission to invent a second authoritative leader."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Monitor election frequency, term changes and unavailable-quorum duration. Tune failure detection against network jitter and pauses. Explain why a lease without fencing may leave a stale actor able to affect external state.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "consistent-time",
+    "revision": 1,
+    "title": "Logical clocks and causal ordering",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "Events from two regions arrive out of timestamp order because their machine clocks differ. Can wall time determine which action caused another?"
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "Wall clocks can move and drift. Lamport clocks preserve the implication that causal precedence produces increasing logical timestamps, but a smaller timestamp alone does not prove causality."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Increment a local logical counter on events. Attach it to messages; on receipt set the counter above both the local and received values. Use node identity to break ties when a deterministic total order is required. Use vector versions when detecting concurrency is necessary."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "A deterministic timestamp order can arbitrarily order concurrent events. It does not by itself resolve business conflicts. Vector metadata grows with the number of tracked actors and needs a bounded representation strategy."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Choose the metadata from the question being answered: ordering, concurrency detection or physical-time approximation. Preserve application-specific merge rules for concurrently edited state."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Sender clock to Message transport: attach logical timestamp. Then follow Message transport to Receiver clock: advance beyond the received timestamp. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Logical clocks and causal ordering, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "Wall clocks can move and drift. Lamport clocks preserve the implication that causal precedence produces increasing logical timestamps, but a smaller timestamp alone does not prove causality."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: Events from two regions arrive out of timestamp order because their machine clocks differ. Can wall time determine which action caused another?",
+        "answer": "Increment a local logical counter on events. Attach it to messages; on receipt set the counter above both the local and received values. Use node identity to break ties when a deterministic total order is required. Use vector versions when detecting concurrency is necessary."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Logical clocks and causal ordering, and how should you respond?",
+        "answer": "A deterministic timestamp order can arbitrarily order concurrent events. It does not by itself resolve business conflicts. Vector metadata grows with the number of tracked actors and needs a bounded representation strategy."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Logical clocks and causal ordering, and what would you measure?",
+        "answer": "Choose the metadata from the question being answered: ordering, concurrency detection or physical-time approximation. Preserve application-specific merge rules for concurrently edited state."
+      }
+    ],
+    "atlas": {
+      "id": "consistent-time-flow",
+      "title": "Logical clocks and causal ordering",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Sender clock",
+          "detail": "Wall clocks can move and drift. Lamport clocks preserve the implication that causal precedence produces increasing logical timestamps, but a smaller timestamp alone does not prove causality."
+        },
+        {
+          "id": "1",
+          "label": "Message transport",
+          "detail": "Increment a local logical counter on events. Attach it to messages; on receipt set the counter above both the local and received values. Use node identity to break ties when a deterministic total order is required. Use vector versions when detecting concurrency is necessary."
+        },
+        {
+          "id": "2",
+          "label": "Receiver clock",
+          "detail": "Choose the metadata from the question being answered: ordering, concurrency detection or physical-time approximation. Preserve application-specific merge rules for concurrently edited state."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Attach logical timestamp"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Advance beyond the received timestamp"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "Events from two regions arrive out of timestamp order because their machine clocks differ. Can wall time determine which action caused another?",
+            "Increment a local logical counter on events. Attach it to messages; on receipt set the counter above both the local and received values. Use node identity to break ties when a deterministic total order is required. Use vector versions when detecting concurrency is necessary."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "Wall clocks can move and drift. Lamport clocks preserve the implication that causal precedence produces increasing logical timestamps, but a smaller timestamp alone does not prove causality.",
+            "A deterministic timestamp order can arbitrarily order concurrent events. It does not by itself resolve business conflicts. Vector metadata grows with the number of tracked actors and needs a bounded representation strategy."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Choose the metadata from the question being answered: ordering, concurrency detection or physical-time approximation. Preserve application-specific merge rules for concurrently edited state.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "bloom-filters",
+    "revision": 1,
+    "title": "Bloom filters",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "A storage engine performs expensive disk lookups for keys that usually do not exist. How can it cheaply reject many misses?"
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "A Bloom filter sets several bit positions for each inserted key. A missing bit proves absence relative to the keys represented by the filter; all bits set only means possible membership."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Size the filter from the expected inserted count and target false-positive rate. Build it from the same data segment it represents. On lookup, skip disk access when the filter says absent and confirm positive results against the authoritative data."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "A stale filter missing newly inserted keys can create incorrect negative answers. Ordinary Bloom filters cannot safely delete a key by clearing its bits because other keys may share them. Rebuild immutable-segment filters or choose a suitable counting design."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Measure memory cost and false-positive disk reads. A filter helps negative-heavy workloads and may add overhead to positive-heavy ones. Never use a probabilistic positive result as authorization or proof that a record exists."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Key lookup to Bloom filter: test membership bits. Then follow Bloom filter to Disk segment: confirm possible matches on disk. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Bloom filters, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "A Bloom filter sets several bit positions for each inserted key. A missing bit proves absence relative to the keys represented by the filter; all bits set only means possible membership."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: A storage engine performs expensive disk lookups for keys that usually do not exist. How can it cheaply reject many misses?",
+        "answer": "Size the filter from the expected inserted count and target false-positive rate. Build it from the same data segment it represents. On lookup, skip disk access when the filter says absent and confirm positive results against the authoritative data."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Bloom filters, and how should you respond?",
+        "answer": "A stale filter missing newly inserted keys can create incorrect negative answers. Ordinary Bloom filters cannot safely delete a key by clearing its bits because other keys may share them. Rebuild immutable-segment filters or choose a suitable counting design."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Bloom filters, and what would you measure?",
+        "answer": "Measure memory cost and false-positive disk reads. A filter helps negative-heavy workloads and may add overhead to positive-heavy ones. Never use a probabilistic positive result as authorization or proof that a record exists."
+      }
+    ],
+    "atlas": {
+      "id": "bloom-filters-flow",
+      "title": "Bloom filters",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Key lookup",
+          "detail": "A Bloom filter sets several bit positions for each inserted key. A missing bit proves absence relative to the keys represented by the filter; all bits set only means possible membership."
+        },
+        {
+          "id": "1",
+          "label": "Bloom filter",
+          "detail": "Size the filter from the expected inserted count and target false-positive rate. Build it from the same data segment it represents. On lookup, skip disk access when the filter says absent and confirm positive results against the authoritative data."
+        },
+        {
+          "id": "2",
+          "label": "Disk segment",
+          "detail": "Measure memory cost and false-positive disk reads. A filter helps negative-heavy workloads and may add overhead to positive-heavy ones. Never use a probabilistic positive result as authorization or proof that a record exists."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Test membership bits"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Confirm possible matches on disk"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "A storage engine performs expensive disk lookups for keys that usually do not exist. How can it cheaply reject many misses?",
+            "Size the filter from the expected inserted count and target false-positive rate. Build it from the same data segment it represents. On lookup, skip disk access when the filter says absent and confirm positive results against the authoritative data."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "A Bloom filter sets several bit positions for each inserted key. A missing bit proves absence relative to the keys represented by the filter; all bits set only means possible membership.",
+            "A stale filter missing newly inserted keys can create incorrect negative answers. Ordinary Bloom filters cannot safely delete a key by clearing its bits because other keys may share them. Rebuild immutable-segment filters or choose a suitable counting design."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Measure memory cost and false-positive disk reads. A filter helps negative-heavy workloads and may add overhead to positive-heavy ones. Never use a probabilistic positive result as authorization or proof that a record exists.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "content-delivery",
+    "revision": 1,
+    "title": "Content delivery networks",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "Users far from the origin download the same static images, making latency high and origin bandwidth expensive."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "An edge cache can serve content near users, but cache keys and freshness rules define which responses may be shared. Accidentally caching personalized responses under a shared key leaks data."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Use immutable content-hashed URLs for versioned assets and explicit cache-control headers. Separate public assets from authenticated content. Include only meaningful response-varying dimensions in the cache key to control hit ratio."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "A purge can take time and browsers may retain older assets. Publish references to a new asset only after it is available. Signed URL expiry must be consistent with the edge's authentication and caching configuration."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Measure hit ratio, origin fetch volume and regional latency. Versioned assets simplify invalidation. Dynamic personalized traffic requires a carefully defined caching and access-control contract."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Browser to Edge cache: request a versioned asset. Then follow Edge cache to Origin server: fetch and cache on a miss. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Content delivery networks, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "An edge cache can serve content near users, but cache keys and freshness rules define which responses may be shared. Accidentally caching personalized responses under a shared key leaks data."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: Users far from the origin download the same static images, making latency high and origin bandwidth expensive.",
+        "answer": "Use immutable content-hashed URLs for versioned assets and explicit cache-control headers. Separate public assets from authenticated content. Include only meaningful response-varying dimensions in the cache key to control hit ratio."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Content delivery networks, and how should you respond?",
+        "answer": "A purge can take time and browsers may retain older assets. Publish references to a new asset only after it is available. Signed URL expiry must be consistent with the edge's authentication and caching configuration."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Content delivery networks, and what would you measure?",
+        "answer": "Measure hit ratio, origin fetch volume and regional latency. Versioned assets simplify invalidation. Dynamic personalized traffic requires a carefully defined caching and access-control contract."
+      }
+    ],
+    "atlas": {
+      "id": "content-delivery-flow",
+      "title": "Content delivery networks",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Browser",
+          "detail": "An edge cache can serve content near users, but cache keys and freshness rules define which responses may be shared. Accidentally caching personalized responses under a shared key leaks data."
+        },
+        {
+          "id": "1",
+          "label": "Edge cache",
+          "detail": "Use immutable content-hashed URLs for versioned assets and explicit cache-control headers. Separate public assets from authenticated content. Include only meaningful response-varying dimensions in the cache key to control hit ratio."
+        },
+        {
+          "id": "2",
+          "label": "Origin server",
+          "detail": "Measure hit ratio, origin fetch volume and regional latency. Versioned assets simplify invalidation. Dynamic personalized traffic requires a carefully defined caching and access-control contract."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Request a versioned asset"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Fetch and cache on a miss"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "Users far from the origin download the same static images, making latency high and origin bandwidth expensive.",
+            "Use immutable content-hashed URLs for versioned assets and explicit cache-control headers. Separate public assets from authenticated content. Include only meaningful response-varying dimensions in the cache key to control hit ratio."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "An edge cache can serve content near users, but cache keys and freshness rules define which responses may be shared. Accidentally caching personalized responses under a shared key leaks data.",
+            "A purge can take time and browsers may retain older assets. Publish references to a new asset only after it is available. Signed URL expiry must be consistent with the edge's authentication and caching configuration."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Measure hit ratio, origin fetch volume and regional latency. Versioned assets simplify invalidation. Dynamic personalized traffic requires a carefully defined caching and access-control contract.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "api-versioning",
+    "revision": 1,
+    "title": "API schema evolution",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "An older mobile client remains installed for months while a backend team changes a field's type and meaning."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "Deploying a new server does not update every client. Compatibility includes wire shape and semantics, such as defaults, enum values and error behavior."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Prefer additive optional fields and preserve existing meanings. Make consumers tolerate unknown fields. Introduce a new version for incompatible contracts and collect version usage before retiring an old endpoint."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "Adding an enum value can break a generated client with exhaustive handling. Renaming a field can silently lose data. Use contract checks and staged rollout with old-client traffic represented in validation."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Define a deprecation window and migration telemetry. A version header or path identifies a contract but does not solve support cost. Keep shared business logic behind adapters to reduce divergence."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Old client to Version adapter: send the supported contract. Then follow Version adapter to Domain service: translate to stable domain semantics. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For API schema evolution, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "Deploying a new server does not update every client. Compatibility includes wire shape and semantics, such as defaults, enum values and error behavior."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: An older mobile client remains installed for months while a backend team changes a field's type and meaning.",
+        "answer": "Prefer additive optional fields and preserve existing meanings. Make consumers tolerate unknown fields. Introduce a new version for incompatible contracts and collect version usage before retiring an old endpoint."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying API schema evolution, and how should you respond?",
+        "answer": "Adding an enum value can break a generated client with exhaustive handling. Renaming a field can silently lose data. Use contract checks and staged rollout with old-client traffic represented in validation."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of API schema evolution, and what would you measure?",
+        "answer": "Define a deprecation window and migration telemetry. A version header or path identifies a contract but does not solve support cost. Keep shared business logic behind adapters to reduce divergence."
+      }
+    ],
+    "atlas": {
+      "id": "api-versioning-flow",
+      "title": "API schema evolution",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Old client",
+          "detail": "Deploying a new server does not update every client. Compatibility includes wire shape and semantics, such as defaults, enum values and error behavior."
+        },
+        {
+          "id": "1",
+          "label": "Version adapter",
+          "detail": "Prefer additive optional fields and preserve existing meanings. Make consumers tolerate unknown fields. Introduce a new version for incompatible contracts and collect version usage before retiring an old endpoint."
+        },
+        {
+          "id": "2",
+          "label": "Domain service",
+          "detail": "Define a deprecation window and migration telemetry. A version header or path identifies a contract but does not solve support cost. Keep shared business logic behind adapters to reduce divergence."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Send the supported contract"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Translate to stable domain semantics"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "An older mobile client remains installed for months while a backend team changes a field's type and meaning.",
+            "Prefer additive optional fields and preserve existing meanings. Make consumers tolerate unknown fields. Introduce a new version for incompatible contracts and collect version usage before retiring an old endpoint."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "Deploying a new server does not update every client. Compatibility includes wire shape and semantics, such as defaults, enum values and error behavior.",
+            "Adding an enum value can break a generated client with exhaustive handling. Renaming a field can silently lose data. Use contract checks and staged rollout with old-client traffic represented in validation."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Define a deprecation window and migration telemetry. A version header or path identifies a contract but does not solve support cost. Keep shared business logic behind adapters to reduce divergence.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "expand-contract",
+    "revision": 1,
+    "title": "Expand and contract migrations",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "A large table's column must be renamed while old and new application instances run together during deployment."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "A single destructive schema change can break old instances immediately. Expand first so both versions can operate during the rollout, then remove compatibility structures later."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Add the new representation, deploy compatible readers and writers, and backfill existing rows in bounded batches. Verify parity and switch reads after catch-up. Remove old writes and finally drop the old field once all consumers have migrated."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "Backfills can race with online updates. Use versions or conditional updates to prevent overwriting newer data. A rollback must remain possible until the contract phase deliberately removes old compatibility."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Track backfill progress, mismatch counts, lock waits and replication lag. Throttle migration work and use the engine's supported online DDL. Include batch jobs and external consumers in the migration inventory."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Compatible writer to Backfill worker: maintain compatible representations. Then follow Backfill worker to Dual schema: fill and verify historical records. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Expand and contract migrations, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "A single destructive schema change can break old instances immediately. Expand first so both versions can operate during the rollout, then remove compatibility structures later."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: A large table's column must be renamed while old and new application instances run together during deployment.",
+        "answer": "Add the new representation, deploy compatible readers and writers, and backfill existing rows in bounded batches. Verify parity and switch reads after catch-up. Remove old writes and finally drop the old field once all consumers have migrated."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Expand and contract migrations, and how should you respond?",
+        "answer": "Backfills can race with online updates. Use versions or conditional updates to prevent overwriting newer data. A rollback must remain possible until the contract phase deliberately removes old compatibility."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Expand and contract migrations, and what would you measure?",
+        "answer": "Track backfill progress, mismatch counts, lock waits and replication lag. Throttle migration work and use the engine's supported online DDL. Include batch jobs and external consumers in the migration inventory."
+      }
+    ],
+    "atlas": {
+      "id": "expand-contract-flow",
+      "title": "Expand and contract migrations",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Compatible writer",
+          "detail": "A single destructive schema change can break old instances immediately. Expand first so both versions can operate during the rollout, then remove compatibility structures later."
+        },
+        {
+          "id": "1",
+          "label": "Backfill worker",
+          "detail": "Add the new representation, deploy compatible readers and writers, and backfill existing rows in bounded batches. Verify parity and switch reads after catch-up. Remove old writes and finally drop the old field once all consumers have migrated."
+        },
+        {
+          "id": "2",
+          "label": "Dual schema",
+          "detail": "Track backfill progress, mismatch counts, lock waits and replication lag. Throttle migration work and use the engine's supported online DDL. Include batch jobs and external consumers in the migration inventory."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Maintain compatible representations"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Fill and verify historical records"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "A large table's column must be renamed while old and new application instances run together during deployment.",
+            "Add the new representation, deploy compatible readers and writers, and backfill existing rows in bounded batches. Verify parity and switch reads after catch-up. Remove old writes and finally drop the old field once all consumers have migrated."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "A single destructive schema change can break old instances immediately. Expand first so both versions can operate during the rollout, then remove compatibility structures later.",
+            "Backfills can race with online updates. Use versions or conditional updates to prevent overwriting newer data. A rollback must remain possible until the contract phase deliberately removes old compatibility."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Track backfill progress, mismatch counts, lock waits and replication lag. Throttle migration work and use the engine's supported online DDL. Include batch jobs and external consumers in the migration inventory.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "tenant-isolation",
+    "revision": 1,
+    "title": "Multi-tenant data isolation",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "An API accepts a resource ID and returns another company's document because the query forgot the tenant predicate."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "Tenant isolation must be enforced on every data access path. Authentication establishes caller identity; authorization derives the permitted tenant and resource scope."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Derive tenant context from verified identity and membership. Include tenant identity in keys, unique constraints and queries. Use database row-level policies where appropriate as an additional boundary and test background workers with explicit tenant context."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "Connection pools can accidentally retain session tenant settings. Reset or transaction-scope context and deny access when it is missing. Shared caches and object-store keys need tenant scoping too."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Choose shared tables, separate schemas or separate databases from isolation requirements and operating cost. Test cross-tenant access negatively and audit privileged support paths."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Verified identity to Tenant policy: derive authorized tenant scope. Then follow Tenant policy to Scoped data access: enforce scope at storage boundary. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Multi-tenant data isolation, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "Tenant isolation must be enforced on every data access path. Authentication establishes caller identity; authorization derives the permitted tenant and resource scope."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: An API accepts a resource ID and returns another company's document because the query forgot the tenant predicate.",
+        "answer": "Derive tenant context from verified identity and membership. Include tenant identity in keys, unique constraints and queries. Use database row-level policies where appropriate as an additional boundary and test background workers with explicit tenant context."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Multi-tenant data isolation, and how should you respond?",
+        "answer": "Connection pools can accidentally retain session tenant settings. Reset or transaction-scope context and deny access when it is missing. Shared caches and object-store keys need tenant scoping too."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Multi-tenant data isolation, and what would you measure?",
+        "answer": "Choose shared tables, separate schemas or separate databases from isolation requirements and operating cost. Test cross-tenant access negatively and audit privileged support paths."
+      }
+    ],
+    "atlas": {
+      "id": "tenant-isolation-flow",
+      "title": "Multi-tenant data isolation",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Verified identity",
+          "detail": "Tenant isolation must be enforced on every data access path. Authentication establishes caller identity; authorization derives the permitted tenant and resource scope."
+        },
+        {
+          "id": "1",
+          "label": "Tenant policy",
+          "detail": "Derive tenant context from verified identity and membership. Include tenant identity in keys, unique constraints and queries. Use database row-level policies where appropriate as an additional boundary and test background workers with explicit tenant context."
+        },
+        {
+          "id": "2",
+          "label": "Scoped data access",
+          "detail": "Choose shared tables, separate schemas or separate databases from isolation requirements and operating cost. Test cross-tenant access negatively and audit privileged support paths."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Derive authorized tenant scope"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Enforce scope at storage boundary"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "An API accepts a resource ID and returns another company's document because the query forgot the tenant predicate.",
+            "Derive tenant context from verified identity and membership. Include tenant identity in keys, unique constraints and queries. Use database row-level policies where appropriate as an additional boundary and test background workers with explicit tenant context."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "Tenant isolation must be enforced on every data access path. Authentication establishes caller identity; authorization derives the permitted tenant and resource scope.",
+            "Connection pools can accidentally retain session tenant settings. Reset or transaction-scope context and deny access when it is missing. Shared caches and object-store keys need tenant scoping too."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Choose shared tables, separate schemas or separate databases from isolation requirements and operating cost. Test cross-tenant access negatively and audit privileged support paths.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "stream-watermarks",
+    "revision": 1,
+    "title": "Event time and watermarks",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "A mobile device uploads yesterday's events after reconnecting. A stream processor already emitted yesterday's hourly totals."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "Processing time records arrival, while event time describes when an action occurred. A watermark expresses progress assumptions about event-time completeness and lets windows eventually close."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Assign event timestamps, choose an out-of-order allowance and define late-event handling. Emit updates or corrections while allowed lateness remains, then route events outside the window policy to a separate reconciliation path."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "One idle partition can stall a minimum watermark unless idleness is handled. Advancing watermarks aggressively reduces latency but increases late corrections. Source clock errors require validation and quarantine policies."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Expose watermark lag, late-event counts and correction volume. Explain whether downstream consumers support updated aggregates or require immutable results with a delayed cutoff."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Event source to Window processor: attach event timestamps. Then follow Window processor to Aggregate sink: publish window results and corrections. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Event time and watermarks, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "Processing time records arrival, while event time describes when an action occurred. A watermark expresses progress assumptions about event-time completeness and lets windows eventually close."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: A mobile device uploads yesterday's events after reconnecting. A stream processor already emitted yesterday's hourly totals.",
+        "answer": "Assign event timestamps, choose an out-of-order allowance and define late-event handling. Emit updates or corrections while allowed lateness remains, then route events outside the window policy to a separate reconciliation path."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Event time and watermarks, and how should you respond?",
+        "answer": "One idle partition can stall a minimum watermark unless idleness is handled. Advancing watermarks aggressively reduces latency but increases late corrections. Source clock errors require validation and quarantine policies."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Event time and watermarks, and what would you measure?",
+        "answer": "Expose watermark lag, late-event counts and correction volume. Explain whether downstream consumers support updated aggregates or require immutable results with a delayed cutoff."
+      }
+    ],
+    "atlas": {
+      "id": "stream-watermarks-flow",
+      "title": "Event time and watermarks",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Event source",
+          "detail": "Processing time records arrival, while event time describes when an action occurred. A watermark expresses progress assumptions about event-time completeness and lets windows eventually close."
+        },
+        {
+          "id": "1",
+          "label": "Window processor",
+          "detail": "Assign event timestamps, choose an out-of-order allowance and define late-event handling. Emit updates or corrections while allowed lateness remains, then route events outside the window policy to a separate reconciliation path."
+        },
+        {
+          "id": "2",
+          "label": "Aggregate sink",
+          "detail": "Expose watermark lag, late-event counts and correction volume. Explain whether downstream consumers support updated aggregates or require immutable results with a delayed cutoff."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Attach event timestamps"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Publish window results and corrections"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "A mobile device uploads yesterday's events after reconnecting. A stream processor already emitted yesterday's hourly totals.",
+            "Assign event timestamps, choose an out-of-order allowance and define late-event handling. Emit updates or corrections while allowed lateness remains, then route events outside the window policy to a separate reconciliation path."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "Processing time records arrival, while event time describes when an action occurred. A watermark expresses progress assumptions about event-time completeness and lets windows eventually close.",
+            "One idle partition can stall a minimum watermark unless idleness is handled. Advancing watermarks aggressively reduces latency but increases late corrections. Source clock errors require validation and quarantine policies."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Expose watermark lag, late-event counts and correction volume. Explain whether downstream consumers support updated aggregates or require immutable results with a delayed cutoff.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "bounded-contexts",
+    "revision": 1,
+    "title": "Service boundaries and bounded contexts",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "Two teams use the word customer differently and repeatedly deploy together because their services share tables and business rules."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "A network split alone does not create an independent service boundary. Model ownership around business invariants, vocabulary and change patterns so one context can evolve coherently."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Map business capabilities and identify the data each context owns. Expose deliberate APIs or events and translate foreign models through an adapter. Keep invariants requiring immediate atomic updates within a workable consistency boundary."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "Splitting a transaction across services introduces failure and coordination costs. Shared tables allow hidden coupling even when APIs look separate. A poorly chosen boundary may be best corrected by merging responsibilities."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Evaluate release independence, change coupling and operational ownership. Avoid choosing service count from team size alone. Document which model is authoritative and how foreign identifiers are interpreted."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Owning context to Translation boundary: publish an explicit contract. Then follow Translation boundary to Consumer context: translate into the consumer model. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Service boundaries and bounded contexts, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "A network split alone does not create an independent service boundary. Model ownership around business invariants, vocabulary and change patterns so one context can evolve coherently."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: Two teams use the word customer differently and repeatedly deploy together because their services share tables and business rules.",
+        "answer": "Map business capabilities and identify the data each context owns. Expose deliberate APIs or events and translate foreign models through an adapter. Keep invariants requiring immediate atomic updates within a workable consistency boundary."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Service boundaries and bounded contexts, and how should you respond?",
+        "answer": "Splitting a transaction across services introduces failure and coordination costs. Shared tables allow hidden coupling even when APIs look separate. A poorly chosen boundary may be best corrected by merging responsibilities."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Service boundaries and bounded contexts, and what would you measure?",
+        "answer": "Evaluate release independence, change coupling and operational ownership. Avoid choosing service count from team size alone. Document which model is authoritative and how foreign identifiers are interpreted."
+      }
+    ],
+    "atlas": {
+      "id": "bounded-contexts-flow",
+      "title": "Service boundaries and bounded contexts",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Owning context",
+          "detail": "A network split alone does not create an independent service boundary. Model ownership around business invariants, vocabulary and change patterns so one context can evolve coherently."
+        },
+        {
+          "id": "1",
+          "label": "Translation boundary",
+          "detail": "Map business capabilities and identify the data each context owns. Expose deliberate APIs or events and translate foreign models through an adapter. Keep invariants requiring immediate atomic updates within a workable consistency boundary."
+        },
+        {
+          "id": "2",
+          "label": "Consumer context",
+          "detail": "Evaluate release independence, change coupling and operational ownership. Avoid choosing service count from team size alone. Document which model is authoritative and how foreign identifiers are interpreted."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Publish an explicit contract"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Translate into the consumer model"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "Two teams use the word customer differently and repeatedly deploy together because their services share tables and business rules.",
+            "Map business capabilities and identify the data each context owns. Expose deliberate APIs or events and translate foreign models through an adapter. Keep invariants requiring immediate atomic updates within a workable consistency boundary."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "A network split alone does not create an independent service boundary. Model ownership around business invariants, vocabulary and change patterns so one context can evolve coherently.",
+            "Splitting a transaction across services introduces failure and coordination costs. Shared tables allow hidden coupling even when APIs look separate. A poorly chosen boundary may be best corrected by merging responsibilities."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Evaluate release independence, change coupling and operational ownership. Avoid choosing service count from team size alone. Document which model is authoritative and how foreign identifiers are interpreted.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "capacity-planning",
+    "revision": 1,
+    "title": "Capacity estimation and saturation",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the production problem",
+        "text": "Traffic doubles during a launch, but CPU remains moderate while requests queue for database connections."
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand the guarantee",
+        "text": "Throughput is constrained by the first saturated resource, which may be connections, I/O, memory or downstream concurrency. Averages can hide bursts and skew."
+      },
+      {
+        "id": "implementation",
+        "title": "Build the critical path",
+        "text": "Estimate request rate, fan-out and per-request resource demand. Little's law relates average in-flight work to arrival rate times average time in a stable system: 1000 requests/s at 0.2 s implies roughly 200 in flight. Validate with load tests."
+      },
+      {
+        "id": "failure",
+        "title": "Walk through failure and recovery",
+        "text": "Near saturation, queueing delay can rise sharply. Adding application instances may multiply database connections and worsen the bottleneck. Bound admission and preserve capacity for recovery traffic."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the Staff-level decision",
+        "text": "Report assumptions, peak factors and headroom explicitly. Measure p95 and p99 latency alongside utilization and queue depth. Test the failure case where one capacity unit is unavailable."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the architecture",
+        "text": "Follow Incoming load to Admission queue: apply a measured concurrency budget. Then follow Admission queue to Constrained resource: execute within resource capacity. Check the stated guarantee at each boundary. If the second interaction fails, determine which state is already durable before deciding whether to retry."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "For Capacity estimation and saturation, what guarantee does the mechanism provide and what is its boundary?",
+        "answer": "Throughput is constrained by the first saturated resource, which may be connections, I/O, memory or downstream concurrency. Averages can hide bursts and skew."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Given this incident, describe a concrete implementation: Traffic doubles during a launch, but CPU remains moderate while requests queue for database connections.",
+        "answer": "Estimate request rate, fan-out and per-request resource demand. Little's law relates average in-flight work to arrival rate times average time in a stable system: 1000 requests/s at 0.2 s implies roughly 200 in flight. Validate with load tests."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What can fail after applying Capacity estimation and saturation, and how should you respond?",
+        "answer": "Near saturation, queueing delay can rise sharply. Adding application instances may multiply database connections and worsen the bottleneck. Bound admission and preserve capacity for recovery traffic."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "When would you accept the cost of Capacity estimation and saturation, and what would you measure?",
+        "answer": "Report assumptions, peak factors and headroom explicitly. Measure p95 and p99 latency alongside utilization and queue depth. Test the failure case where one capacity unit is unavailable."
+      }
+    ],
+    "atlas": {
+      "id": "capacity-planning-flow",
+      "title": "Capacity estimation and saturation",
+      "nodes": [
+        {
+          "id": "0",
+          "label": "Incoming load",
+          "detail": "Throughput is constrained by the first saturated resource, which may be connections, I/O, memory or downstream concurrency. Averages can hide bursts and skew."
+        },
+        {
+          "id": "1",
+          "label": "Admission queue",
+          "detail": "Estimate request rate, fan-out and per-request resource demand. Little's law relates average in-flight work to arrival rate times average time in a stable system: 1000 requests/s at 0.2 s implies roughly 200 in flight. Validate with load tests."
+        },
+        {
+          "id": "2",
+          "label": "Constrained resource",
+          "detail": "Report assumptions, peak factors and headroom explicitly. Measure p95 and p99 latency alongside utilization and queue depth. Test the failure case where one capacity unit is unavailable."
+        }
+      ],
+      "edges": [
+        {
+          "from": "0",
+          "to": "1",
+          "label": "Apply a measured concurrency budget"
+        },
+        {
+          "from": "1",
+          "to": "2",
+          "label": "Execute within resource capacity"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "Traffic doubles during a launch, but CPU remains moderate while requests queue for database connections.",
+            "Estimate request rate, fan-out and per-request resource demand. Little's law relates average in-flight work to arrival rate times average time in a stable system: 1000 requests/s at 0.2 s implies roughly 200 in flight. Validate with load tests."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure boundary",
+          "steps": [
+            "Throughput is constrained by the first saturated resource, which may be connections, I/O, memory or downstream concurrency. Averages can hide bursts and skew.",
+            "Near saturation, queueing delay can rise sharply. Adding application instances may multiply database connections and worsen the bottleneck. Bound admission and preserve capacity for recovery traffic."
+          ]
+        },
+        {
+          "id": "decision",
+          "label": "Design review",
+          "steps": [
+            "Report assumptions, peak factors and headroom explicitly. Measure p95 and p99 latency alongside utilization and queue depth. Test the failure case where one capacity unit is unavailable.",
+            "State the invariant, identify the authoritative state and explain the operational signals that would change your decision."
+          ]
+        }
+      ]
+    }
   }
 ]
