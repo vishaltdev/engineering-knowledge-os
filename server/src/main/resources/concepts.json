@@ -4587,5 +4587,142 @@
         }
       ]
     }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "two-phase-commit",
+    "revision": 1,
+    "title": "Two-phase commit",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Start with the atomicity requirement",
+        "text": "An inventory database and an order database must either both commit a reservation or both abort. What happens if the coordinator disappears between their decisions?"
+      },
+      {
+        "id": "mechanism",
+        "title": "Understand prepare and commit",
+        "text": "The coordinator first asks every participant to prepare. A prepared participant durably records its promise and retains the resources needed to commit. Only after every required participant votes yes does the coordinator durably decide commit."
+      },
+      {
+        "id": "implementation",
+        "title": "Implement durable coordination",
+        "text": "Use a transaction manager and participants that implement the same supported protocol. Persist transaction identity and the coordinator decision before announcing commit. Participants must make repeated commit or abort messages safe and recover unresolved transactions from durable logs."
+      },
+      {
+        "id": "failure",
+        "title": "Recover an uncertain participant",
+        "text": "A participant that voted yes cannot safely abort merely because its timer expires: the coordinator may already have committed elsewhere. It remains in doubt until it recovers the authoritative decision, potentially holding locks and reducing availability."
+      },
+      {
+        "id": "decision",
+        "title": "Defend the availability cost",
+        "text": "Use this only where the consistency requirement justifies operational coupling and the participating systems support it. Monitor prepared transaction age, retained locks and recovery backlog. Do not casually mix irreversible external actions into a distributed transaction."
+      },
+      {
+        "id": "diagram",
+        "title": "Read the protocol",
+        "text": "The coordinator sends prepare to each participant. Participants persist their vote. After a durable commit decision, the coordinator sends commit and retries delivery until participants acknowledge. The diagram shows one participant branch; real transactions require votes from all enrolled participants."
+      }
+    ],
+    "cards": [
+      {
+        "id": "mechanism",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Guarantees",
+        "prompt": "What must happen before a two-phase coordinator decides commit?",
+        "answer": "The coordinator first asks every participant to prepare. A prepared participant durably records its promise and retains the resources needed to commit. Only after every required participant votes yes does the coordinator durably decide commit."
+      },
+      {
+        "id": "implementation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "Which state must survive coordinator and participant restarts?",
+        "answer": "Use a transaction manager and participants that implement the same supported protocol. Persist transaction identity and the coordinator decision before announcing commit. Participants must make repeated commit or abort messages safe and recover unresolved transactions from durable logs."
+      },
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "Why can a prepared participant not simply abort after a timeout?",
+        "answer": "A participant that voted yes cannot safely abort merely because its timer expires: the coordinator may already have committed elsewhere. It remains in doubt until it recovers the authoritative decision, potentially holding locks and reducing availability."
+      },
+      {
+        "id": "decision",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "Which operational costs determine whether two-phase commit is appropriate?",
+        "answer": "Use this only where the consistency requirement justifies operational coupling and the participating systems support it. Monitor prepared transaction age, retained locks and recovery backlog. Do not casually mix irreversible external actions into a distributed transaction."
+      }
+    ],
+    "atlas": {
+      "id": "two-phase-commit-flow",
+      "title": "Two-phase commit",
+      "nodes": [
+        {
+          "id": "coordinator",
+          "label": "Coordinator",
+          "detail": "The coordinator first asks every participant to prepare. A prepared participant durably records its promise and retains the resources needed to commit. Only after every required participant votes yes does the coordinator durably decide commit."
+        },
+        {
+          "id": "participant",
+          "label": "Participant",
+          "detail": "A participant that voted yes cannot safely abort merely because its timer expires: the coordinator may already have committed elsewhere. It remains in doubt until it recovers the authoritative decision, potentially holding locks and reducing availability."
+        },
+        {
+          "id": "log",
+          "label": "Participant durable log",
+          "detail": "Use a transaction manager and participants that implement the same supported protocol. Persist transaction identity and the coordinator decision before announcing commit. Participants must make repeated commit or abort messages safe and recover unresolved transactions from durable logs."
+        }
+      ],
+      "edges": [
+        {
+          "from": "coordinator",
+          "to": "participant",
+          "label": "Prepare, then deliver durable decision"
+        },
+        {
+          "from": "participant",
+          "to": "log",
+          "label": "Persist prepared state before voting yes"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "commit",
+          "label": "All vote yes",
+          "steps": [
+            "The coordinator first asks every participant to prepare. A prepared participant durably records its promise and retains the resources needed to commit. Only after every required participant votes yes does the coordinator durably decide commit.",
+            "Use a transaction manager and participants that implement the same supported protocol. Persist transaction identity and the coordinator decision before announcing commit. Participants must make repeated commit or abort messages safe and recover unresolved transactions from durable logs."
+          ]
+        },
+        {
+          "id": "abort",
+          "label": "A participant votes no",
+          "steps": [
+            "The coordinator records an abort decision.",
+            "Prepared participants receive abort and release retained resources."
+          ]
+        },
+        {
+          "id": "uncertain",
+          "label": "Coordinator unavailable",
+          "steps": [
+            "A participant that voted yes cannot safely abort merely because its timer expires: the coordinator may already have committed elsewhere. It remains in doubt until it recovers the authoritative decision, potentially holding locks and reducing availability.",
+            "Use this only where the consistency requirement justifies operational coupling and the participating systems support it. Monitor prepared transaction age, retained locks and recovery backlog. Do not casually mix irreversible external actions into a distributed transaction."
+          ]
+        }
+      ]
+    }
   }
 ]
