@@ -894,5 +894,1095 @@
         }
       ]
     }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "replication",
+    "revision": 1,
+    "title": "Database replication",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict the failure",
+        "text": "A database host fails while reads and writes are active."
+      },
+      {
+        "id": "failure",
+        "title": "Why the simple approach fails",
+        "text": "Copies can lag, so a replica read may miss a write that the primary acknowledged."
+      },
+      {
+        "id": "design",
+        "title": "Follow the architecture",
+        "text": "Replicate the log to followers and define when a write is acknowledged. Route reads that need session consistency to an appropriate replica or the leader. In the diagram, Primary connects to Replica to perform this step: replicate committed log."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the decision",
+        "text": "Synchronous acknowledgement can increase durability at the cost of latency and write availability."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "What failure motivates Database replication?",
+        "answer": "Copies can lag, so a replica read may miss a write that the primary acknowledged."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "How would you apply Database replication?",
+        "answer": "Replicate the log to followers and define when a write is acknowledged. Route reads that need session consistency to an appropriate replica or the leader."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "What limitation must you defend for Database replication?",
+        "answer": "Synchronous acknowledgement can increase durability at the cost of latency and write availability."
+      }
+    ],
+    "atlas": {
+      "id": "replication-example",
+      "title": "Database replication flow",
+      "nodes": [
+        {
+          "id": "source",
+          "label": "Primary",
+          "detail": "Replicate the log to followers and define when a write is acknowledged. Route reads that need session consistency to an appropriate replica or the leader."
+        },
+        {
+          "id": "target",
+          "label": "Replica",
+          "detail": "Synchronous acknowledgement can increase durability at the cost of latency and write availability."
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "target",
+          "label": "Replicate committed log"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "A database host fails while reads and writes are active.",
+            "Replicate the log to followers and define when a write is acknowledged. Route reads that need session consistency to an appropriate replica or the leader."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure pressure",
+          "steps": [
+            "Copies can lag, so a replica read may miss a write that the primary acknowledged.",
+            "Synchronous acknowledgement can increase durability at the cost of latency and write availability."
+          ]
+        },
+        {
+          "id": "recovery",
+          "label": "Recovery discussion",
+          "steps": [
+            "Identify which operation completed and which outcome remains uncertain.",
+            "Verify state at the authoritative resource before replaying work.",
+            "Synchronous acknowledgement can increase durability at the cost of latency and write availability."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "consistent-hashing",
+    "revision": 1,
+    "title": "Consistent hashing",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict the failure",
+        "text": "Adding a cache server remaps almost every key under modulo hashing."
+      },
+      {
+        "id": "failure",
+        "title": "Why the simple approach fails",
+        "text": "A cold fleet can overload the backing store after membership changes."
+      },
+      {
+        "id": "design",
+        "title": "Follow the architecture",
+        "text": "Place nodes and keys on a hash ring and assign a key to its next owner. Virtual nodes improve distribution. In the diagram, Key router connects to Hash ring owner to perform this step: locate the next clockwise owner."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the decision",
+        "text": "Membership changes require data movement. Hot keys still require separate mitigation."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "What failure motivates Consistent hashing?",
+        "answer": "A cold fleet can overload the backing store after membership changes."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "How would you apply Consistent hashing?",
+        "answer": "Place nodes and keys on a hash ring and assign a key to its next owner. Virtual nodes improve distribution."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "What limitation must you defend for Consistent hashing?",
+        "answer": "Membership changes require data movement. Hot keys still require separate mitigation."
+      }
+    ],
+    "atlas": {
+      "id": "consistent-hashing-example",
+      "title": "Consistent hashing flow",
+      "nodes": [
+        {
+          "id": "source",
+          "label": "Key router",
+          "detail": "Place nodes and keys on a hash ring and assign a key to its next owner. Virtual nodes improve distribution."
+        },
+        {
+          "id": "target",
+          "label": "Hash ring owner",
+          "detail": "Membership changes require data movement. Hot keys still require separate mitigation."
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "target",
+          "label": "Locate the next clockwise owner"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "Adding a cache server remaps almost every key under modulo hashing.",
+            "Place nodes and keys on a hash ring and assign a key to its next owner. Virtual nodes improve distribution."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure pressure",
+          "steps": [
+            "A cold fleet can overload the backing store after membership changes.",
+            "Membership changes require data movement. Hot keys still require separate mitigation."
+          ]
+        },
+        {
+          "id": "recovery",
+          "label": "Recovery discussion",
+          "steps": [
+            "Identify which operation completed and which outcome remains uncertain.",
+            "Verify state at the authoritative resource before replaying work.",
+            "Membership changes require data movement. Hot keys still require separate mitigation."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "backpressure",
+    "revision": 1,
+    "title": "Backpressure",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict the failure",
+        "text": "A producer generates work faster than a downstream consumer can process it."
+      },
+      {
+        "id": "failure",
+        "title": "Why the simple approach fails",
+        "text": "An unbounded buffer consumes memory and increases end-to-end delay."
+      },
+      {
+        "id": "design",
+        "title": "Follow the architecture",
+        "text": "Bound buffers and communicate demand or rejection upstream. Pause production where possible and define an overload response. In the diagram, Producer connects to Bounded consumer to perform this step: send only within available capacity."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the decision",
+        "text": "Blocking propagates latency upstream. Dropping work requires an explicit loss policy."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "What failure motivates Backpressure?",
+        "answer": "An unbounded buffer consumes memory and increases end-to-end delay."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "How would you apply Backpressure?",
+        "answer": "Bound buffers and communicate demand or rejection upstream. Pause production where possible and define an overload response."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "What limitation must you defend for Backpressure?",
+        "answer": "Blocking propagates latency upstream. Dropping work requires an explicit loss policy."
+      }
+    ],
+    "atlas": {
+      "id": "backpressure-example",
+      "title": "Backpressure flow",
+      "nodes": [
+        {
+          "id": "source",
+          "label": "Producer",
+          "detail": "Bound buffers and communicate demand or rejection upstream. Pause production where possible and define an overload response."
+        },
+        {
+          "id": "target",
+          "label": "Bounded consumer",
+          "detail": "Blocking propagates latency upstream. Dropping work requires an explicit loss policy."
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "target",
+          "label": "Send only within available capacity"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "A producer generates work faster than a downstream consumer can process it.",
+            "Bound buffers and communicate demand or rejection upstream. Pause production where possible and define an overload response."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure pressure",
+          "steps": [
+            "An unbounded buffer consumes memory and increases end-to-end delay.",
+            "Blocking propagates latency upstream. Dropping work requires an explicit loss policy."
+          ]
+        },
+        {
+          "id": "recovery",
+          "label": "Recovery discussion",
+          "steps": [
+            "Identify which operation completed and which outcome remains uncertain.",
+            "Verify state at the authoritative resource before replaying work.",
+            "Blocking propagates latency upstream. Dropping work requires an explicit loss policy."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "bulkheads",
+    "revision": 1,
+    "title": "Bulkhead isolation",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict the failure",
+        "text": "A slow reporting workload exhausts the worker pool used by checkout."
+      },
+      {
+        "id": "failure",
+        "title": "Why the simple approach fails",
+        "text": "A shared resource pool allows one workload to consume all capacity."
+      },
+      {
+        "id": "design",
+        "title": "Follow the architecture",
+        "text": "Allocate separate concurrency budgets to critical workloads and bound waiting in each pool. In the diagram, Workload router connects to Isolated worker pool to perform this step: admit within the workload budget."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the decision",
+        "text": "Reserved capacity can sit idle. Size budgets from measured demand and resource limits."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "What failure motivates Bulkhead isolation?",
+        "answer": "A shared resource pool allows one workload to consume all capacity."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "How would you apply Bulkhead isolation?",
+        "answer": "Allocate separate concurrency budgets to critical workloads and bound waiting in each pool."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "What limitation must you defend for Bulkhead isolation?",
+        "answer": "Reserved capacity can sit idle. Size budgets from measured demand and resource limits."
+      }
+    ],
+    "atlas": {
+      "id": "bulkheads-example",
+      "title": "Bulkhead isolation flow",
+      "nodes": [
+        {
+          "id": "source",
+          "label": "Workload router",
+          "detail": "Allocate separate concurrency budgets to critical workloads and bound waiting in each pool."
+        },
+        {
+          "id": "target",
+          "label": "Isolated worker pool",
+          "detail": "Reserved capacity can sit idle. Size budgets from measured demand and resource limits."
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "target",
+          "label": "Admit within the workload budget"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "A slow reporting workload exhausts the worker pool used by checkout.",
+            "Allocate separate concurrency budgets to critical workloads and bound waiting in each pool."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure pressure",
+          "steps": [
+            "A shared resource pool allows one workload to consume all capacity.",
+            "Reserved capacity can sit idle. Size budgets from measured demand and resource limits."
+          ]
+        },
+        {
+          "id": "recovery",
+          "label": "Recovery discussion",
+          "steps": [
+            "Identify which operation completed and which outcome remains uncertain.",
+            "Verify state at the authoritative resource before replaying work.",
+            "Reserved capacity can sit idle. Size budgets from measured demand and resource limits."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "sagas",
+    "revision": 1,
+    "title": "Sagas",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict the failure",
+        "text": "An order spans inventory reservation, payment and shipping services."
+      },
+      {
+        "id": "failure",
+        "title": "Why the simple approach fails",
+        "text": "Separate databases cannot provide one ordinary local transaction across every service."
+      },
+      {
+        "id": "design",
+        "title": "Follow the architecture",
+        "text": "Track each local transaction in a durable workflow and run business compensations when later steps fail. In the diagram, Saga coordinator connects to Participant service to perform this step: execute or compensate a local step."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the decision",
+        "text": "Compensation can fail and may not undo a real-world effect. Expose pending states and provide reconciliation."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "What failure motivates Sagas?",
+        "answer": "Separate databases cannot provide one ordinary local transaction across every service."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "How would you apply Sagas?",
+        "answer": "Track each local transaction in a durable workflow and run business compensations when later steps fail."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "What limitation must you defend for Sagas?",
+        "answer": "Compensation can fail and may not undo a real-world effect. Expose pending states and provide reconciliation."
+      }
+    ],
+    "atlas": {
+      "id": "sagas-example",
+      "title": "Sagas flow",
+      "nodes": [
+        {
+          "id": "source",
+          "label": "Saga coordinator",
+          "detail": "Track each local transaction in a durable workflow and run business compensations when later steps fail."
+        },
+        {
+          "id": "target",
+          "label": "Participant service",
+          "detail": "Compensation can fail and may not undo a real-world effect. Expose pending states and provide reconciliation."
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "target",
+          "label": "Execute or compensate a local step"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "An order spans inventory reservation, payment and shipping services.",
+            "Track each local transaction in a durable workflow and run business compensations when later steps fail."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure pressure",
+          "steps": [
+            "Separate databases cannot provide one ordinary local transaction across every service.",
+            "Compensation can fail and may not undo a real-world effect. Expose pending states and provide reconciliation."
+          ]
+        },
+        {
+          "id": "recovery",
+          "label": "Recovery discussion",
+          "steps": [
+            "Identify which operation completed and which outcome remains uncertain.",
+            "Verify state at the authoritative resource before replaying work.",
+            "Compensation can fail and may not undo a real-world effect. Expose pending states and provide reconciliation."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "cqrs",
+    "revision": 1,
+    "title": "CQRS",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict the failure",
+        "text": "Complex analytical reads contend with transactional order updates."
+      },
+      {
+        "id": "failure",
+        "title": "Why the simple approach fails",
+        "text": "One schema and workload policy can become difficult to optimize for both access patterns."
+      },
+      {
+        "id": "design",
+        "title": "Follow the architecture",
+        "text": "Separate command handling from a query projection. Update the projection from durable change events. In the diagram, Command model connects to Query projection to perform this step: apply durable change events."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the decision",
+        "text": "The read model can lag. Provide read-your-write behavior when required and plan rebuilds."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "What failure motivates CQRS?",
+        "answer": "One schema and workload policy can become difficult to optimize for both access patterns."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "How would you apply CQRS?",
+        "answer": "Separate command handling from a query projection. Update the projection from durable change events."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "What limitation must you defend for CQRS?",
+        "answer": "The read model can lag. Provide read-your-write behavior when required and plan rebuilds."
+      }
+    ],
+    "atlas": {
+      "id": "cqrs-example",
+      "title": "CQRS flow",
+      "nodes": [
+        {
+          "id": "source",
+          "label": "Command model",
+          "detail": "Separate command handling from a query projection. Update the projection from durable change events."
+        },
+        {
+          "id": "target",
+          "label": "Query projection",
+          "detail": "The read model can lag. Provide read-your-write behavior when required and plan rebuilds."
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "target",
+          "label": "Apply durable change events"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "Complex analytical reads contend with transactional order updates.",
+            "Separate command handling from a query projection. Update the projection from durable change events."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure pressure",
+          "steps": [
+            "One schema and workload policy can become difficult to optimize for both access patterns.",
+            "The read model can lag. Provide read-your-write behavior when required and plan rebuilds."
+          ]
+        },
+        {
+          "id": "recovery",
+          "label": "Recovery discussion",
+          "steps": [
+            "Identify which operation completed and which outcome remains uncertain.",
+            "Verify state at the authoritative resource before replaying work.",
+            "The read model can lag. Provide read-your-write behavior when required and plan rebuilds."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "event-sourcing",
+    "revision": 1,
+    "title": "Event sourcing",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict the failure",
+        "text": "A balance record shows the current value but cannot explain how it changed."
+      },
+      {
+        "id": "failure",
+        "title": "Why the simple approach fails",
+        "text": "Overwriting state loses the sequence of business decisions unless a separate history is maintained."
+      },
+      {
+        "id": "design",
+        "title": "Follow the architecture",
+        "text": "Append immutable domain events with stream version checks and derive current state by replay. Use snapshots to bound replay cost. In the diagram, Command handler connects to Event stream to perform this step: append with an expected stream version."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the decision",
+        "text": "Event schemas evolve and privacy requirements need explicit design. Replay must avoid repeating external side effects."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "What failure motivates Event sourcing?",
+        "answer": "Overwriting state loses the sequence of business decisions unless a separate history is maintained."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "How would you apply Event sourcing?",
+        "answer": "Append immutable domain events with stream version checks and derive current state by replay. Use snapshots to bound replay cost."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "What limitation must you defend for Event sourcing?",
+        "answer": "Event schemas evolve and privacy requirements need explicit design. Replay must avoid repeating external side effects."
+      }
+    ],
+    "atlas": {
+      "id": "event-sourcing-example",
+      "title": "Event sourcing flow",
+      "nodes": [
+        {
+          "id": "source",
+          "label": "Command handler",
+          "detail": "Append immutable domain events with stream version checks and derive current state by replay. Use snapshots to bound replay cost."
+        },
+        {
+          "id": "target",
+          "label": "Event stream",
+          "detail": "Event schemas evolve and privacy requirements need explicit design. Replay must avoid repeating external side effects."
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "target",
+          "label": "Append with an expected stream version"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "A balance record shows the current value but cannot explain how it changed.",
+            "Append immutable domain events with stream version checks and derive current state by replay. Use snapshots to bound replay cost."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure pressure",
+          "steps": [
+            "Overwriting state loses the sequence of business decisions unless a separate history is maintained.",
+            "Event schemas evolve and privacy requirements need explicit design. Replay must avoid repeating external side effects."
+          ]
+        },
+        {
+          "id": "recovery",
+          "label": "Recovery discussion",
+          "steps": [
+            "Identify which operation completed and which outcome remains uncertain.",
+            "Verify state at the authoritative resource before replaying work.",
+            "Event schemas evolve and privacy requirements need explicit design. Replay must avoid repeating external side effects."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "service-discovery",
+    "revision": 1,
+    "title": "Service discovery",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict the failure",
+        "text": "Service instances scale and move while clients keep stale addresses."
+      },
+      {
+        "id": "failure",
+        "title": "Why the simple approach fails",
+        "text": "Hard-coded endpoints break when instances disappear or are replaced."
+      },
+      {
+        "id": "design",
+        "title": "Follow the architecture",
+        "text": "Maintain a registry of eligible instances and let clients or a proxy resolve destinations with bounded caching. In the diagram, Calling service connects to Service registry to perform this step: resolve eligible instance addresses."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the decision",
+        "text": "Registry and health data can be stale. Combine discovery with deadlines and bounded retries."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "What failure motivates Service discovery?",
+        "answer": "Hard-coded endpoints break when instances disappear or are replaced."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "How would you apply Service discovery?",
+        "answer": "Maintain a registry of eligible instances and let clients or a proxy resolve destinations with bounded caching."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "What limitation must you defend for Service discovery?",
+        "answer": "Registry and health data can be stale. Combine discovery with deadlines and bounded retries."
+      }
+    ],
+    "atlas": {
+      "id": "service-discovery-example",
+      "title": "Service discovery flow",
+      "nodes": [
+        {
+          "id": "source",
+          "label": "Calling service",
+          "detail": "Maintain a registry of eligible instances and let clients or a proxy resolve destinations with bounded caching."
+        },
+        {
+          "id": "target",
+          "label": "Service registry",
+          "detail": "Registry and health data can be stale. Combine discovery with deadlines and bounded retries."
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "target",
+          "label": "Resolve eligible instance addresses"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "Service instances scale and move while clients keep stale addresses.",
+            "Maintain a registry of eligible instances and let clients or a proxy resolve destinations with bounded caching."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure pressure",
+          "steps": [
+            "Hard-coded endpoints break when instances disappear or are replaced.",
+            "Registry and health data can be stale. Combine discovery with deadlines and bounded retries."
+          ]
+        },
+        {
+          "id": "recovery",
+          "label": "Recovery discussion",
+          "steps": [
+            "Identify which operation completed and which outcome remains uncertain.",
+            "Verify state at the authoritative resource before replaying work.",
+            "Registry and health data can be stale. Combine discovery with deadlines and bounded retries."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "distributed-locks",
+    "revision": 1,
+    "title": "Distributed locks and fencing",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict the failure",
+        "text": "A paused worker resumes after its lease expires and a new worker takes ownership."
+      },
+      {
+        "id": "failure",
+        "title": "Why the simple approach fails",
+        "text": "A lease alone cannot stop the old worker from writing after losing ownership."
+      },
+      {
+        "id": "design",
+        "title": "Follow the architecture",
+        "text": "Issue monotonically increasing fencing tokens and have the protected resource reject tokens older than the latest accepted token. In the diagram, Lease holder connects to Protected resource to perform this step: write with a fencing token."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the decision",
+        "text": "The resource must enforce fencing. Lease renewal and lock-service failure still need explicit handling."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "What failure motivates Distributed locks and fencing?",
+        "answer": "A lease alone cannot stop the old worker from writing after losing ownership."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "How would you apply Distributed locks and fencing?",
+        "answer": "Issue monotonically increasing fencing tokens and have the protected resource reject tokens older than the latest accepted token."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "What limitation must you defend for Distributed locks and fencing?",
+        "answer": "The resource must enforce fencing. Lease renewal and lock-service failure still need explicit handling."
+      }
+    ],
+    "atlas": {
+      "id": "distributed-locks-example",
+      "title": "Distributed locks and fencing flow",
+      "nodes": [
+        {
+          "id": "source",
+          "label": "Lease holder",
+          "detail": "Issue monotonically increasing fencing tokens and have the protected resource reject tokens older than the latest accepted token."
+        },
+        {
+          "id": "target",
+          "label": "Protected resource",
+          "detail": "The resource must enforce fencing. Lease renewal and lock-service failure still need explicit handling."
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "target",
+          "label": "Write with a fencing token"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "A paused worker resumes after its lease expires and a new worker takes ownership.",
+            "Issue monotonically increasing fencing tokens and have the protected resource reject tokens older than the latest accepted token."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure pressure",
+          "steps": [
+            "A lease alone cannot stop the old worker from writing after losing ownership.",
+            "The resource must enforce fencing. Lease renewal and lock-service failure still need explicit handling."
+          ]
+        },
+        {
+          "id": "recovery",
+          "label": "Recovery discussion",
+          "steps": [
+            "Identify which operation completed and which outcome remains uncertain.",
+            "Verify state at the authoritative resource before replaying work.",
+            "The resource must enforce fencing. Lease renewal and lock-service failure still need explicit handling."
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "observability",
+    "revision": 1,
+    "title": "Observability",
+    "collections": [
+      "system-design"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Predict the failure",
+        "text": "A checkout latency alert fires but infrastructure averages look normal."
+      },
+      {
+        "id": "failure",
+        "title": "Why the simple approach fails",
+        "text": "Aggregated metrics can hide a slow tenant or one dependency path."
+      },
+      {
+        "id": "design",
+        "title": "Follow the architecture",
+        "text": "Connect latency and error metrics to distributed traces and structured logs using correlation identifiers. Define service objectives and actionable alerts. In the diagram, Instrumented service connects to Telemetry pipeline to perform this step: export metrics, traces and structured logs."
+      },
+      {
+        "id": "tradeoff",
+        "title": "Defend the decision",
+        "text": "High-cardinality data costs money and can expose sensitive inputs. Sample deliberately and redact payloads."
+      }
+    ],
+    "cards": [
+      {
+        "id": "failure",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Diagnosis",
+        "prompt": "What failure motivates Observability?",
+        "answer": "Aggregated metrics can hide a slow tenant or one dependency path."
+      },
+      {
+        "id": "design",
+        "stage": "design",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "How would you apply Observability?",
+        "answer": "Connect latency and error metrics to distributed traces and structured logs using correlation identifiers. Define service objectives and actionable alerts."
+      },
+      {
+        "id": "tradeoff",
+        "stage": "tradeoff",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "What limitation must you defend for Observability?",
+        "answer": "High-cardinality data costs money and can expose sensitive inputs. Sample deliberately and redact payloads."
+      }
+    ],
+    "atlas": {
+      "id": "observability-example",
+      "title": "Observability flow",
+      "nodes": [
+        {
+          "id": "source",
+          "label": "Instrumented service",
+          "detail": "Connect latency and error metrics to distributed traces and structured logs using correlation identifiers. Define service objectives and actionable alerts."
+        },
+        {
+          "id": "target",
+          "label": "Telemetry pipeline",
+          "detail": "High-cardinality data costs money and can expose sensitive inputs. Sample deliberately and redact payloads."
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "target",
+          "label": "Export metrics, traces and structured logs"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal operation",
+          "steps": [
+            "A checkout latency alert fires but infrastructure averages look normal.",
+            "Connect latency and error metrics to distributed traces and structured logs using correlation identifiers. Define service objectives and actionable alerts."
+          ]
+        },
+        {
+          "id": "failure",
+          "label": "Failure pressure",
+          "steps": [
+            "Aggregated metrics can hide a slow tenant or one dependency path.",
+            "High-cardinality data costs money and can expose sensitive inputs. Sample deliberately and redact payloads."
+          ]
+        },
+        {
+          "id": "recovery",
+          "label": "Recovery discussion",
+          "steps": [
+            "Identify which operation completed and which outcome remains uncertain.",
+            "Verify state at the authoritative resource before replaying work.",
+            "High-cardinality data costs money and can expose sensitive inputs. Sample deliberately and redact payloads."
+          ]
+        }
+      ]
+    }
   }
 ]
