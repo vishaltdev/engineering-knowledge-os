@@ -4724,5 +4724,147 @@
         }
       ]
     }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "hedged-requests",
+    "revision": 1,
+    "title": "Hedged requests and tail latency",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "One slow replica dominates the user experience",
+        "text": "A read-only profile lookup normally takes 20 ms, but occasional replicas take 800 ms during storage pauses. A page fans out to ten lookups and waits for all of them. Even when each lookup is usually fast, one straggler can dominate page latency. How can the caller reduce this tail without doubling all traffic?"
+      },
+      {
+        "id": "mechanism",
+        "title": "Race a delayed second read",
+        "text": "Send the initial read normally. If it remains incomplete beyond a measured threshold, send one hedge to a different eligible replica. Accept the first valid successful response and cancel the other attempt. This differs from waiting for the original attempt to fail: both may be in flight. Replica selection should avoid the same overloaded host or shared failure domain."
+      },
+      {
+        "id": "implementation",
+        "title": "Bound the extra work",
+        "text": "Choose the hedge delay from measured latency distributions, for example near the normal p95, then validate it under realistic load. Give both attempts the same end-to-end deadline. Enforce one extra attempt maximum and a fleet-wide hedge concurrency or traffic budget. Preserve the original request identity in traces and separately record attempt identity, hedge launch, winning attempt and cancellation outcome."
+      },
+      {
+        "id": "failure",
+        "title": "Prevent load feedback and inconsistent answers",
+        "text": "During a broad slowdown, many requests cross the threshold simultaneously. Disable or throttle hedges when capacity is constrained rather than amplifying the outage. Cancellation may arrive after expensive work has finished, so count actual backend work. A second replica must satisfy the same freshness and authorization requirements. The first response is usable only if it meets the requested version or consistency contract. A fast error should not automatically beat a still-pending valid response."
+      },
+      {
+        "id": "decision",
+        "title": "Choose workloads where duplication is safe",
+        "text": "Use hedging for bounded, replay-safe reads with genuinely independent latency variation and spare capacity. Side-effecting operations require a separate safe deduplication contract and are usually poor initial candidates. Compare p99 latency benefit with incremental backend CPU, network traffic and connection occupancy. If all replicas share one saturated disk tier, moving work between them may provide little benefit."
+      },
+      {
+        "id": "diagram",
+        "title": "Follow the two racing paths",
+        "text": "The coordinator starts the primary read. The delay gate opens only if that read is still pending and the hedge budget permits another attempt. It sends the hedge to an independent replica. The coordinator accepts the first response that meets the read contract and cancels remaining work. During overload, the gate stays closed and the caller relies on its deadline and normal overload policy."
+      }
+    ],
+    "cards": [
+      {
+        "id": "delay",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Design",
+        "prompt": "Why delay the second attempt instead of duplicating every read immediately?",
+        "answer": "Most reads finish normally before the delay. A delayed hedge targets stragglers while reducing duplicate work. The threshold must be measured and constrained by an extra-work budget."
+      },
+      {
+        "id": "overload",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What happens if every read becomes slow during a shared storage incident?",
+        "answer": "Many hedges can launch together and amplify load without finding an independent fast path. Throttle or disable hedges under saturation and retain the original deadline."
+      },
+      {
+        "id": "freshness",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "Can the caller accept whichever replica responds first?",
+        "answer": "Only a valid successful response satisfying the requested consistency and freshness contract can win. A stale replica or fast error must not bypass those requirements."
+      }
+    ],
+    "atlas": {
+      "id": "hedged-read-flow",
+      "title": "Delayed read race",
+      "nodes": [
+        {
+          "id": "coordinator",
+          "label": "Read coordinator",
+          "detail": "Starts the read, enforces the shared deadline and selects the first valid successful result."
+        },
+        {
+          "id": "gate",
+          "label": "Delay and budget gate",
+          "detail": "Admits one hedge only while the primary is pending and capacity permits extra work."
+        },
+        {
+          "id": "primary",
+          "label": "Primary read replica",
+          "detail": "Handles the initial read. Work may continue briefly after cancellation."
+        },
+        {
+          "id": "alternate",
+          "label": "Independent replica",
+          "detail": "Handles the delayed hedge under the same freshness and authorization contract."
+        }
+      ],
+      "edges": [
+        {
+          "from": "coordinator",
+          "to": "primary",
+          "label": "Start initial read"
+        },
+        {
+          "from": "coordinator",
+          "to": "gate",
+          "label": "Wait until hedge threshold"
+        },
+        {
+          "from": "gate",
+          "to": "alternate",
+          "label": "Send one permitted hedge"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "fast",
+          "label": "Normal fast read",
+          "steps": [
+            "The initial replica returns before the delay expires.",
+            "The coordinator accepts the valid response.",
+            "No hedge is launched."
+          ]
+        },
+        {
+          "id": "straggler",
+          "label": "One replica stalls",
+          "steps": [
+            "The initial read remains pending beyond the measured threshold.",
+            "The gate admits one alternate read with the same deadline.",
+            "A valid alternate response wins; cancel the initial attempt and measure remaining work."
+          ]
+        },
+        {
+          "id": "saturation",
+          "label": "Shared overload",
+          "steps": [
+            "Both replicas share a saturated resource and read latency rises.",
+            "The hedge budget or overload policy prevents extra attempts.",
+            "The request completes within its deadline or reports failure without multiplying backend load."
+          ]
+        }
+      ]
+    }
   }
 ]
