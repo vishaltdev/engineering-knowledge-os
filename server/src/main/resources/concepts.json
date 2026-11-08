@@ -4866,5 +4866,152 @@
         }
       ]
     }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "merkle-tree-repair",
+    "revision": 1,
+    "title": "Merkle trees and anti-entropy repair",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Find divergence without copying everything",
+        "text": "Two replicas store a billion keys after a network interruption. Most records match, but a small fraction differ. Comparing or copying every value would consume substantial bandwidth. How can replicas locate the changed ranges efficiently?"
+      },
+      {
+        "id": "mechanism",
+        "title": "Summarize ranges recursively",
+        "text": "A Merkle tree hashes records into leaves and combines child hashes into parent hashes. Replicas with identical tree shape, record ordering and hash encoding compare root hashes. Matching roots indicate matching represented content under the hash assumptions. If roots differ, compare child hashes and descend only into mismatching branches."
+      },
+      {
+        "id": "implementation",
+        "title": "Make comparisons reproducible",
+        "text": "Partition the same keyspace into deterministic ranges. Canonically encode keys, values, versions and deletion markers before hashing. Build summaries from a consistent snapshot or a documented stable generation. Exchange generation identity and root hashes, then recursively request mismatching child summaries until reaching ranges small enough to exchange records. Verify repaired ranges again after applying changes."
+      },
+      {
+        "id": "failure",
+        "title": "Resolve versions before repairing data",
+        "text": "A hash mismatch identifies divergence but does not tell which copy is authoritative. Apply the store’s version or conflict-resolution rules to differing records. Include tombstones so a replica cannot resurrect a deleted record. Retain deletion information long enough for supported offline replicas, or require a full resynchronization when they exceed that window. A moving dataset can keep changing roots, so compare stable generations and catch up subsequent writes separately."
+      },
+      {
+        "id": "decision",
+        "title": "Budget background repair",
+        "text": "Merkle summaries trade CPU, metadata storage and tree-maintenance work for lower network comparison cost when most ranges match. Coarse leaves require larger range transfers, while fine leaves increase metadata. Throttle repair I/O and prioritize ranges with known divergence. Measure repair age, bytes compared and transferred, conflicting versions and convergence failures."
+      },
+      {
+        "id": "diagram",
+        "title": "Walk through a mismatching branch",
+        "text": "The repair coordinator requests snapshot summaries from both replicas. It compares roots and descends into mismatching ranges. The version resolver inspects records from those ranges and selects valid merged or newer versions according to the store contract. During a failed transfer, resume from the stable generation and recheck the repaired range. Deletion markers travel with records and remain part of the resulting hash."
+      }
+    ],
+    "cards": [
+      {
+        "id": "summary",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Mechanism",
+        "prompt": "How does a Merkle tree avoid transferring all replica records during comparison?",
+        "answer": "Compare roots and descend only through mismatching child hashes until reaching differing ranges. Matching subtrees need no record transfer, assuming equivalent tree construction and snapshot scope."
+      },
+      {
+        "id": "deletion",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "Why must anti-entropy repair preserve tombstones?",
+        "answer": "An offline replica may retain an older value after another replica deletes it. Without retained deletion metadata and version rules, repair can copy the old value back and resurrect it."
+      },
+      {
+        "id": "snapshot",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "Why can two correct implementations repeatedly disagree on root hashes?",
+        "answer": "They may hash different snapshot generations, ranges, record orders or encodings. Agree on deterministic construction and stable comparison scope, then separately handle subsequent writes."
+      }
+    ],
+    "atlas": {
+      "id": "anti-entropy-flow",
+      "title": "Replica divergence repair",
+      "nodes": [
+        {
+          "id": "coordinator",
+          "label": "Repair coordinator",
+          "detail": "Compares generation-scoped subtree hashes and schedules bounded range transfers."
+        },
+        {
+          "id": "a",
+          "label": "Replica A summary",
+          "detail": "Hashes canonical records and tombstones for a stable snapshot."
+        },
+        {
+          "id": "b",
+          "label": "Replica B summary",
+          "detail": "Uses the same range partitioning, encoding and snapshot contract."
+        },
+        {
+          "id": "resolver",
+          "label": "Version resolver",
+          "detail": "Resolves differing records by the store contract and verifies repaired ranges."
+        }
+      ],
+      "edges": [
+        {
+          "from": "coordinator",
+          "to": "a",
+          "label": "Request stable subtree hashes"
+        },
+        {
+          "from": "coordinator",
+          "to": "b",
+          "label": "Compare equivalent ranges"
+        },
+        {
+          "from": "a",
+          "to": "resolver",
+          "label": "Provide records from differing leaves"
+        },
+        {
+          "from": "b",
+          "to": "resolver",
+          "label": "Provide versions and tombstones"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "match",
+          "label": "Matching replicas",
+          "steps": [
+            "Agree on stable generation scope and tree construction.",
+            "Compare root hashes.",
+            "Matching roots complete this comparison without transferring records."
+          ]
+        },
+        {
+          "id": "divergence",
+          "label": "Divergent range",
+          "steps": [
+            "Root hashes differ.",
+            "Descend through mismatching child hashes.",
+            "Exchange the affected records, resolve versions and verify the repaired range."
+          ]
+        },
+        {
+          "id": "delete",
+          "label": "Offline replica returns",
+          "steps": [
+            "One replica holds an old value and another a newer tombstone.",
+            "Version resolution preserves the deletion.",
+            "If the replica exceeded supported retention, require resynchronization before accepting its old data."
+          ]
+        }
+      ]
+    }
   }
 ]
