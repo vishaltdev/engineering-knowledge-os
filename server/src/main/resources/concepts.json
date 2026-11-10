@@ -5013,5 +5013,147 @@
         }
       ]
     }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "erasure-coding",
+    "revision": 1,
+    "title": "Erasure coding and storage repair",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Recover durable objects with less storage overhead",
+        "text": "An object store holds petabytes of immutable media. Keeping three complete copies consumes three times the payload storage. The service must recover data after losing disks or hosts while controlling capacity cost. Which failures must a storage code tolerate, and what happens to repair bandwidth?"
+      },
+      {
+        "id": "mechanism",
+        "title": "Encode data and parity fragments",
+        "text": "Split an object stripe into k data fragments and compute m parity fragments with a suitable erasure code, such as Reed–Solomon. Any k valid fragments from that stripe can reconstruct the original under the code’s assumptions. The payload overhead is (k+m)/k: a 6+3 layout uses 1.5 times the payload capacity before metadata, padding and other system overhead. Three missing fragments are recoverable only when at least six valid fragments remain."
+      },
+      {
+        "id": "implementation",
+        "title": "Place fragments across independent failure domains",
+        "text": "Give every stripe a generation identity, code parameters, fragment indices and checksums. Place fragments so the required disk, host or rack failures cannot remove more than m fragments in one stripe. Publish an object manifest only after the chosen durability acknowledgement condition is met. If acknowledging before all fragments are durable, account explicitly for the smaller initial failure margin and complete the missing writes in the background."
+      },
+      {
+        "id": "failure",
+        "title": "Repair missing fragments and detect corruption",
+        "text": "A repair controller identifies missing or corrupt fragments, reads enough valid fragments, reconstructs the absent fragment and writes it to a replacement failure domain. Verify checksums before decoding and after repair. Fence obsolete object generations so a delayed repair cannot replace newer data. Correlated failures can exceed the parity budget, and slow repair extends exposure to additional failures."
+      },
+      {
+        "id": "decision",
+        "title": "Balance capacity, latency and repair cost",
+        "text": "Erasure coding reduces payload capacity overhead but adds coding CPU, metadata and reconstruction I/O. Small objects may need packing to avoid fragment and padding overhead. Degraded reads can require multiple network reads. A larger k can improve storage efficiency while increasing repair fan-in. Compare normal and degraded p99 read latency, repair completion time and cross-rack traffic using the actual placement policy."
+      },
+      {
+        "id": "diagram",
+        "title": "Follow the stripe through storage and recovery",
+        "text": "The encoder produces a 6+3 stripe and the placement layer assigns nine fragments to eligible failure domains. The manifest records fragment locations and generation metadata. A reader consults that manifest and retrieves enough valid fragments. If one fragment is unavailable, the repair controller gathers six surviving fragments through the placement layer, reconstructs the missing piece and updates its location after the replacement is durable. The diagram groups fragment holders for readability; placement must still track each failure domain separately."
+      }
+    ],
+    "cards": [
+      {
+        "id": "budget",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Capacity",
+        "prompt": "For a 6+3 erasure-coded stripe, what are the payload overhead and recovery threshold?",
+        "answer": "Nine fragments store six fragments of payload, giving 1.5 times payload overhead before system overhead. Any six valid fragments reconstruct the stripe under the code assumptions, allowing up to three missing fragments."
+      },
+      {
+        "id": "placement",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Failure domains",
+        "prompt": "Why can nine fragments across nine disks still fail a host-loss requirement?",
+        "answer": "Multiple disks may share one host or rack. A correlated failure can remove more than the parity budget from one stripe. Placement must be derived from the required failure domains."
+      },
+      {
+        "id": "repair",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "Why does lower capacity overhead not necessarily imply lower operating cost?",
+        "answer": "Encoding and degraded reads consume CPU and network resources. Repair reads multiple surviving fragments, creates cross-domain traffic and extends risk exposure while incomplete. Evaluate repair time and degraded latency alongside capacity."
+      }
+    ],
+    "atlas": {
+      "id": "erasure-storage-flow",
+      "title": "Encoded object storage",
+      "nodes": [
+        {
+          "id": "encoder",
+          "label": "Stripe encoder",
+          "detail": "Creates k data and m parity fragments with code parameters and checksums."
+        },
+        {
+          "id": "placement",
+          "label": "Fragment placement",
+          "detail": "Distributes fragments across independently failing locations and tracks generations."
+        },
+        {
+          "id": "manifest",
+          "label": "Object manifest",
+          "detail": "Publishes locations and code parameters after the durability condition is satisfied."
+        },
+        {
+          "id": "repair",
+          "label": "Repair controller",
+          "detail": "Reconstructs missing fragments from enough valid survivors and verifies replacements."
+        }
+      ],
+      "edges": [
+        {
+          "from": "encoder",
+          "to": "placement",
+          "label": "Persist independently placed fragments"
+        },
+        {
+          "from": "placement",
+          "to": "manifest",
+          "label": "Publish verified locations and generation"
+        },
+        {
+          "from": "placement",
+          "to": "repair",
+          "label": "Read surviving fragments for reconstruction"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "write",
+          "label": "Healthy write",
+          "steps": [
+            "Encode six data and three parity fragments.",
+            "Place them according to the failure-domain policy.",
+            "Publish the manifest after the configured durability condition."
+          ]
+        },
+        {
+          "id": "loss",
+          "label": "One fragment lost",
+          "steps": [
+            "Detect a missing fragment and verify surviving checksums.",
+            "Read six valid fragments and reconstruct the missing fragment.",
+            "Persist a generation-matched replacement and record its location."
+          ]
+        },
+        {
+          "id": "correlated",
+          "label": "Failure budget exceeded",
+          "steps": [
+            "A correlated failure removes four fragments in a 6+3 stripe.",
+            "Only five valid fragments remain, below the reconstruction threshold.",
+            "Seek an additional copy or recovery source; parity alone cannot reconstruct this stripe."
+          ]
+        }
+      ]
+    }
   }
 ]
