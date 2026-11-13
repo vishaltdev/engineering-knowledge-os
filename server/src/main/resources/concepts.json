@@ -5155,5 +5155,137 @@
         }
       ]
     }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "inverted-indexes",
+    "revision": 1,
+    "title": "Inverted indexes and search retrieval",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Search text without scanning every document",
+        "text": "A support portal holds 50 million tickets. Searching for two words by scanning every ticket exceeds the latency budget. Users need matching tickets, ranked results and tenant-specific access checks. How can the search path inspect only plausible matches?"
+      },
+      {
+        "id": "mechanism",
+        "title": "Map terms to posting lists",
+        "text": "An inverted index maps each normalized term to a posting list of document identifiers, optionally including term frequency and positions. For an AND query, intersect matching posting lists. Begin with a short list to reduce candidate work. Phrase matching requires positions and an analyzer that preserves the relevant token relationships."
+      },
+      {
+        "id": "implementation",
+        "title": "Build immutable segments and publish searchable generations",
+        "text": "Analyze documents with a defined tokenizer and normalization pipeline, then write sorted postings into immutable segments. Keep document identity and source version in index metadata. Publish a searchable generation atomically after its files are complete. Merge segments in the background and retain old segments until active readers release them. A refresh makes indexed updates searchable according to the engine contract."
+      },
+      {
+        "id": "failure",
+        "title": "Handle stale documents and mismatched analyzers",
+        "text": "A source update can commit before the search index reflects it. Apply versioned updates and deletion markers so delayed events cannot resurrect old documents. Monitor indexing lag and reconcile source state. Changing analyzers can change token identity and phrase behavior, so build a new index generation and validate queries before switching traffic. Tenant filtering must be enforced in the search path, with authoritative authorization checks where the contract requires them."
+      },
+      {
+        "id": "decision",
+        "title": "Separate retrieval from ranking cost",
+        "text": "Posting intersection identifies candidates, while ranking scores and selects the top results. Common terms can still produce enormous lists. Use skip structures and engine-supported pruning, bound query complexity and measure expensive queries. Track index freshness, p99 query latency, segment merge I/O and recall against representative judgments. Replicas improve read capacity but every copy adds indexing and storage cost."
+      },
+      {
+        "id": "diagram",
+        "title": "Follow indexing and querying",
+        "text": "The analyzer turns document text into normalized tokens. The segment store maps those tokens to document postings and source versions. The query executor applies compatible analysis, intersects postings and ranks authorized candidates. During delayed indexing, the executor may see an older generation. Replay versioned updates, publish the repaired generation and verify deleted or restricted documents are handled correctly."
+      }
+    ],
+    "cards": [
+      {
+        "id": "postings",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Mechanism",
+        "prompt": "How does an inverted index execute an AND query without scanning all document text?",
+        "answer": "It retrieves each normalized term’s posting list and intersects document identifiers, preferably starting with a selective list. Positions enable additional phrase checks."
+      },
+      {
+        "id": "versions",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "A delayed update arrives after a document deletion. What prevents resurrection?",
+        "answer": "Apply source versions and retain the necessary deletion metadata so an older update cannot replace a newer deletion. Reconcile the index against the source when replay history is incomplete."
+      },
+      {
+        "id": "ranking",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "Why can a common-word query remain expensive despite using an inverted index?",
+        "answer": "Its posting lists and candidate set can be very large. Retrieval pruning, query limits and ranking budgets reduce work, but must preserve the chosen relevance and recall contract."
+      }
+    ],
+    "atlas": {
+      "id": "search-retrieval",
+      "title": "Search indexing and retrieval",
+      "nodes": [
+        {
+          "id": "analyzer",
+          "label": "Document analyzer",
+          "detail": "Defines normalization, token identity and positional metadata."
+        },
+        {
+          "id": "segments",
+          "label": "Index segments",
+          "detail": "Store sorted postings and version metadata in searchable generations."
+        },
+        {
+          "id": "query",
+          "label": "Query executor",
+          "detail": "Intersects postings, applies access scope and ranks candidates."
+        }
+      ],
+      "edges": [
+        {
+          "from": "analyzer",
+          "to": "segments",
+          "label": "Write normalized postings and versions"
+        },
+        {
+          "from": "segments",
+          "to": "query",
+          "label": "Read candidate lists from a stable generation"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Selective AND query",
+          "steps": [
+            "Normalize both query terms using compatible analysis.",
+            "Intersect the term posting lists.",
+            "Apply access checks and rank the surviving documents."
+          ]
+        },
+        {
+          "id": "lag",
+          "label": "Indexing delay",
+          "steps": [
+            "The source document changes while the searchable generation is older.",
+            "Lag monitoring detects the freshness breach.",
+            "Apply the versioned update and publish a new searchable generation."
+          ]
+        },
+        {
+          "id": "migration",
+          "label": "Analyzer migration",
+          "steps": [
+            "Build a new generation with the new analyzer.",
+            "Compare representative query results and phrase behavior.",
+            "Switch readers after validation and retain recovery access to the prior generation."
+          ]
+        }
+      ]
+    }
   }
 ]
