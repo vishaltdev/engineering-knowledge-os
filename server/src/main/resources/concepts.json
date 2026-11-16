@@ -5287,5 +5287,152 @@
         }
       ]
     }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "gossip-membership",
+    "revision": 1,
+    "title": "Gossip membership and failure suspicion",
+    "collections": [
+      "system-design",
+      "distributed-internals"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Share membership without a central broadcast bottleneck",
+        "text": "A cluster has thousands of workers. Each worker must learn which peers are available, but sending every heartbeat to every other worker scales poorly. A worker also needs to distinguish an unreachable peer from one that has temporarily paused. How can membership information spread with bounded per-node communication?"
+      },
+      {
+        "id": "mechanism",
+        "title": "Probe a few peers and disseminate changes",
+        "text": "A gossip membership protocol periodically exchanges updates with selected peers. Randomized exchanges spread information over multiple rounds without requiring each node to broadcast to the whole cluster. A SWIM-style design separates failure detection from dissemination: a node probes a target directly, then asks helpers to probe it indirectly if the direct probe fails. Failed probes provide evidence of unreachability, not proof of process death."
+      },
+      {
+        "id": "implementation",
+        "title": "Version membership records and bound retransmission",
+        "text": "Track member identity, incarnation number and status. A joining or restarted process needs an identity and incarnation policy that prevents delayed records from replacing newer membership state. Piggyback a bounded set of updates on protocol messages and retransmit changes enough times to make dissemination likely. Use explicit state reconciliation to repair missed updates. Membership merge rules must define which incarnation and status wins."
+      },
+      {
+        "id": "failure",
+        "title": "Use suspicion before declaring a peer dead",
+        "text": "A direct probe can fail because the observer is overloaded or one network path is broken. Indirect probes through helpers provide additional paths. Mark the target suspect when the probe protocol fails, then allow a configurable suspicion interval during which the target can refute the suspicion using a newer incarnation. A network partition can still produce different membership views, which later reconcile. Tune timeouts against actual pauses and network delays."
+      },
+      {
+        "id": "decision",
+        "title": "Keep membership separate from exclusive authority",
+        "text": "Gossip is appropriate when eventual membership dissemination and scalable failure detection meet the application needs. It does not grant exclusive leadership or establish a globally agreed configuration. Routing can use local membership with bounded retries, while assigning exclusive ownership requires a protocol that enforces that authority. Measure convergence time, false suspicions, probe traffic and stale member age. Larger helper counts and retransmission budgets improve robustness at additional network cost."
+      },
+      {
+        "id": "diagram",
+        "title": "Trace direct and indirect failure detection",
+        "text": "The observer probes the target. If that path fails, it asks a helper to probe the same target through another path. The observer disseminates a versioned suspicion to peers only after the probe policy is exhausted. A live target refutes stale suspicion with a newer incarnation. The diagram shows a representative helper and peer group; each round selects peers and messages according to the bounded communication policy."
+      }
+    ],
+    "cards": [
+      {
+        "id": "indirect",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Mechanism",
+        "prompt": "Why use indirect probes after a direct membership probe times out?",
+        "answer": "A helper can reach the target through another network path, reducing false suspicions caused by one path or observer. Failure of all probes still establishes suspicion rather than proof of death."
+      },
+      {
+        "id": "incarnation",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "How can a live target refute a delayed suspicion record?",
+        "answer": "Publish a membership update with a newer incarnation under the protocol’s version and merge rules. Restart identity handling must prevent old messages from overriding newer state."
+      },
+      {
+        "id": "authority",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "Can a gossip membership view safely determine the sole writer for an object?",
+        "answer": "Membership views can diverge during partitions. Exclusive write authority requires a protocol enforcing ownership, such as agreed epochs with resource-side fencing, rather than local reachability information alone."
+      }
+    ],
+    "atlas": {
+      "id": "gossip-probe-flow",
+      "title": "Direct probes and suspicion dissemination",
+      "nodes": [
+        {
+          "id": "observer",
+          "label": "Observer node",
+          "detail": "Chooses probe targets, applies deadlines and records versioned membership changes."
+        },
+        {
+          "id": "helper",
+          "label": "Indirect helper",
+          "detail": "Attempts to reach the target through another path after a failed direct probe."
+        },
+        {
+          "id": "target",
+          "label": "Target node",
+          "detail": "Responds to probes and refutes suspicion through newer-incarnation updates."
+        },
+        {
+          "id": "peers",
+          "label": "Peer dissemination",
+          "detail": "Spreads bounded membership updates and reconciles missed changes."
+        }
+      ],
+      "edges": [
+        {
+          "from": "observer",
+          "to": "target",
+          "label": "Probe target directly"
+        },
+        {
+          "from": "observer",
+          "to": "helper",
+          "label": "Request indirect probe after timeout"
+        },
+        {
+          "from": "helper",
+          "to": "target",
+          "label": "Check reachability through another path"
+        },
+        {
+          "from": "observer",
+          "to": "peers",
+          "label": "Disseminate versioned membership status"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "healthy",
+          "label": "Healthy target",
+          "steps": [
+            "The observer selects a target and sends a direct probe.",
+            "The target responds within the deadline.",
+            "The observer continues its bounded periodic probing."
+          ]
+        },
+        {
+          "id": "path",
+          "label": "Broken direct path",
+          "steps": [
+            "The direct probe times out.",
+            "A helper probes the target successfully through another path.",
+            "The observer avoids declaring the target dead based on the direct failure."
+          ]
+        },
+        {
+          "id": "suspect",
+          "label": "Pause and refutation",
+          "steps": [
+            "Direct and indirect probes miss a paused target.",
+            "The observer records suspicion and disseminates the versioned update.",
+            "A recovered target refutes it with a newer incarnation before final removal when permitted by the protocol."
+          ]
+        }
+      ]
+    }
   }
 ]
