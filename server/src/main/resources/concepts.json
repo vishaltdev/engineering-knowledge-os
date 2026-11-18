@@ -5434,5 +5434,157 @@
         }
       ]
     }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "lsm-trees",
+    "revision": 1,
+    "title": "LSM trees and compaction",
+    "collections": [
+      "system-design",
+      "distributed-internals"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "Absorb writes without random updates to every disk page",
+        "text": "A telemetry key-value store ingests sustained updates while serving recent values. Updating a disk tree in place creates expensive random I/O. How can writes become sequential while readers still find the newest committed version and deletes remain effective?"
+      },
+      {
+        "id": "mechanism",
+        "title": "Buffer writes and flush sorted immutable runs",
+        "text": "A log-structured merge tree buffers updates in an ordered memory table and flushes them into immutable sorted files. A write-ahead log supports recovery of acknowledged buffered data according to the configured durability policy. Reads reconcile versions across the active memory table, immutable memory tables and sorted files. A key may exist in several runs, so file presence alone does not identify its current value."
+      },
+      {
+        "id": "implementation",
+        "title": "Define the acknowledgement and file-publication boundaries",
+        "text": "Append the operation and sequence number to the write-ahead log, make it durable as required by the write contract, then expose the update in the memory table. Freeze a full memory table and flush it to a complete sorted file. Publish file membership through recoverable manifest metadata before retiring the corresponding recovery log. Use indexes and optional Bloom filters to narrow disk lookups, and preserve sequence information for snapshots."
+      },
+      {
+        "id": "failure",
+        "title": "Recover interrupted flushes and preserve deletions",
+        "text": "A crash can leave a complete data file that was never published or a partially written file. Recover only files referenced by valid manifest state and replay the required log records. Compaction merges runs and removes obsolete versions only when snapshot and overlap rules permit. A tombstone cannot be dropped while an older value in another relevant run could reappear after the merge. Long-lived snapshots can prevent cleanup and increase storage pressure."
+      },
+      {
+        "id": "decision",
+        "title": "Choose a compaction policy from measured amplification",
+        "text": "Leveled compaction generally reduces overlapping data for reads while rewriting data during movement between levels. Tiered policies can defer merging at the cost of more overlapping runs. Compare write amplification, read amplification and space amplification for the actual workload. Monitor pending compaction bytes, write stalls, disk headroom and p99 reads. Throttle ingestion when background maintenance cannot keep up rather than letting run count and storage usage grow without bound."
+      },
+      {
+        "id": "diagram",
+        "title": "Follow a write through recovery and compaction",
+        "text": "The write path persists its recovery log and inserts a version into the memory table. A flush produces a sorted run and publishes it in the manifest. The compactor merges published runs while preserving versions visible to active snapshots. After a crash, the recovery process trusts the manifest and replays retained logs. During compaction overload, admission slows writes so maintenance can regain capacity."
+      }
+    ],
+    "cards": [
+      {
+        "id": "durability",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Durability",
+        "prompt": "When is an LSM write safe to acknowledge under a durable write contract?",
+        "answer": "After the required recovery-log durability boundary is satisfied and the update is visible according to the engine contract. A memory-table insert alone does not survive power loss."
+      },
+      {
+        "id": "tombstone",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "Why can dropping a tombstone during a partial compaction resurrect a deleted key?",
+        "answer": "An older value may remain in another overlapping run. Cleanup must account for those runs and active snapshot versions before deletion metadata is removed."
+      },
+      {
+        "id": "amplification",
+        "stage": "decision",
+        "revision": 1,
+        "category": "Staff trade-off",
+        "prompt": "Which three costs should drive LSM compaction policy selection?",
+        "answer": "Write amplification from rewrites, read amplification from searching runs, and space amplification from overlapping versions. Evaluate them alongside disk headroom, maintenance backlog and tail latency."
+      }
+    ],
+    "atlas": {
+      "id": "lsm-storage-flow",
+      "title": "Buffered writes and sorted-run maintenance",
+      "nodes": [
+        {
+          "id": "write",
+          "label": "Write coordinator",
+          "detail": "Assigns sequence information and enforces the durability acknowledgement contract."
+        },
+        {
+          "id": "wal",
+          "label": "Recovery log",
+          "detail": "Retains enough durable operations to recover unflushed writes."
+        },
+        {
+          "id": "mem",
+          "label": "Memory table",
+          "detail": "Maintains ordered buffered updates and freezes for flushing."
+        },
+        {
+          "id": "runs",
+          "label": "Sorted runs",
+          "detail": "Immutable files become live through manifest publication."
+        },
+        {
+          "id": "compact",
+          "label": "Compactor",
+          "detail": "Merges runs while preserving snapshot visibility and safe deletion semantics."
+        }
+      ],
+      "edges": [
+        {
+          "from": "write",
+          "to": "wal",
+          "label": "Append and durably persist recovery record"
+        },
+        {
+          "from": "write",
+          "to": "mem",
+          "label": "Expose sequenced buffered update"
+        },
+        {
+          "from": "mem",
+          "to": "runs",
+          "label": "Flush and publish through manifest"
+        },
+        {
+          "from": "runs",
+          "to": "compact",
+          "label": "Merge versions under snapshot rules"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Normal write and flush",
+          "steps": [
+            "Persist the log according to the requested durability.",
+            "Insert into the memory table and acknowledge under the engine contract.",
+            "Flush a frozen table and publish the resulting file before log retirement."
+          ]
+        },
+        {
+          "id": "crash",
+          "label": "Crash during flush",
+          "steps": [
+            "A new sorted file is incomplete or not yet published.",
+            "Recovery uses valid manifest state and ignores incomplete or unreferenced files.",
+            "Retained log records recover buffered updates."
+          ]
+        },
+        {
+          "id": "pressure",
+          "label": "Compaction falls behind",
+          "steps": [
+            "Overlapping runs and pending compaction bytes increase.",
+            "Read cost and disk pressure rise.",
+            "Bound ingestion and restore maintenance capacity while preserving safe version retention."
+          ]
+        }
+      ]
+    }
   }
 ]
