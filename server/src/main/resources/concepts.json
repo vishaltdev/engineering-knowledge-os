@@ -5586,5 +5586,147 @@
         }
       ]
     }
+  },
+  {
+    "schemaVersion": 1,
+    "id": "database-connection-pools",
+    "revision": 1,
+    "title": "Database connection pools and session budgets",
+    "collections": [
+      "system-design",
+      "production"
+    ],
+    "sources": [],
+    "links": [],
+    "lesson": [
+      {
+        "id": "problem",
+        "title": "An autoscaling fleet exhausts database sessions",
+        "text": "A service scales from 20 to 100 instances. Each instance can open 30 database connections, while the database can safely support only 600 application sessions. Request latency rises even though the new application instances have spare CPU. How should the system bound concurrency across the fleet?"
+      },
+      {
+        "id": "mechanism",
+        "title": "Treat connections as a finite admission budget",
+        "text": "A connection pool reuses sessions and caps simultaneous database work within its scope. A per-instance cap is multiplied by the number of instances. One hundred instances with a cap of 30 can demand 3000 connections. Establish a database-wide budget with reserved capacity for operations, maintenance and other services, then allocate it across the expected fleet size or through a supported shared proxy."
+      },
+      {
+        "id": "implementation",
+        "title": "Bound acquisition and transaction lifetimes",
+        "text": "If 500 of the 600 sessions are allocated to this application at a maximum of 100 instances, a cap of five per instance fits that allocation. Validate throughput under realistic transaction times rather than assuming more connections improve it. Set a bounded acquisition wait that fits inside the request deadline. Close or return connections on every success and failure path, and keep transactions short. Avoid holding a database transaction while waiting for an unrelated remote service."
+      },
+      {
+        "id": "failure",
+        "title": "Prevent queues and reconnect storms",
+        "text": "When all connections are busy, an unbounded acquisition queue turns overload into long latency and memory pressure. Bound waiting and reject excess work according to the API contract. A database restart can trigger simultaneous reconnection from every instance, so stagger connection establishment and retry with backoff and jitter. A validation check cannot guarantee the next query succeeds. After a failed transaction, roll back or discard the session before reuse as required by the driver."
+      },
+      {
+        "id": "decision",
+        "title": "Measure useful concurrency rather than pool size",
+        "text": "Track active, idle and pending acquisitions, acquisition wait percentiles, transaction duration and database saturation. A larger pool can increase lock contention and database CPU scheduling overhead. A shared proxy can multiplex connections only within its protocol constraints, and session state or long transactions can pin backend sessions. Budget deployments with temporary old-and-new instance overlap and check other applications sharing the database."
+      },
+      {
+        "id": "diagram",
+        "title": "Follow admission through a pooled session",
+        "text": "The request handler asks the bounded acquisition queue for a connection. The pool either leases an available session or waits within the acquisition deadline. The database executes the short transaction, after which the connection is returned. During saturation, the queue rejects work beyond its limit. During a restart, invalid sessions are discarded and replacements are created under a staggered reconnect policy."
+      }
+    ],
+    "cards": [
+      {
+        "id": "fleet",
+        "stage": "mechanism",
+        "revision": 1,
+        "category": "Capacity",
+        "prompt": "Why can autoscaling an application overload its database without increasing per-instance pool size?",
+        "answer": "The fleet-wide connection ceiling is roughly instance count times each pool cap. Scaling increases possible database concurrency and connection establishment load, even when each instance is lightly loaded."
+      },
+      {
+        "id": "deadline",
+        "stage": "implementation",
+        "revision": 1,
+        "category": "Implementation",
+        "prompt": "How should connection acquisition relate to the request deadline?",
+        "answer": "Acquisition wait must be bounded and leave sufficient time for the transaction and response. Limit pending requests and reject overload instead of letting requests wait indefinitely."
+      },
+      {
+        "id": "restart",
+        "stage": "failure",
+        "revision": 1,
+        "category": "Failure analysis",
+        "prompt": "What should a fleet do when a database restart invalidates all pooled connections?",
+        "answer": "Discard invalid sessions and establish replacements with bounded concurrency, backoff and jitter. Keep waiting bounded and handle query failures even after successful connection validation."
+      }
+    ],
+    "atlas": {
+      "id": "pooled-database-admission",
+      "title": "Bounded database admission",
+      "nodes": [
+        {
+          "id": "request",
+          "label": "Request handler",
+          "detail": "Carries the end-to-end deadline and requests a database lease."
+        },
+        {
+          "id": "queue",
+          "label": "Acquisition queue",
+          "detail": "Bounds waiting work and enforces acquisition timeout."
+        },
+        {
+          "id": "pool",
+          "label": "Connection pool",
+          "detail": "Leases sessions within the per-instance share of the database budget."
+        },
+        {
+          "id": "database",
+          "label": "Database sessions",
+          "detail": "Execute short transactions within the shared database capacity."
+        }
+      ],
+      "edges": [
+        {
+          "from": "request",
+          "to": "queue",
+          "label": "Acquire within request deadline"
+        },
+        {
+          "from": "queue",
+          "to": "pool",
+          "label": "Lease only within configured cap"
+        },
+        {
+          "from": "pool",
+          "to": "database",
+          "label": "Execute transaction and return session"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "Available session",
+          "steps": [
+            "A handler requests a session within its deadline.",
+            "The pool leases an idle connection.",
+            "The transaction completes and the connection returns to the pool."
+          ]
+        },
+        {
+          "id": "saturation",
+          "label": "All sessions busy",
+          "steps": [
+            "The request waits only within the bounded acquisition policy.",
+            "Queue depth or the acquisition deadline reaches its limit.",
+            "The handler returns the configured overload response and records acquisition pressure."
+          ]
+        },
+        {
+          "id": "restart",
+          "label": "Database restart",
+          "steps": [
+            "Queries or validation detect broken connections.",
+            "Pools discard invalid sessions and stagger replacement creation.",
+            "Bounded admission prevents a growing backlog while the database recovers."
+          ]
+        }
+      ]
+    }
   }
 ]
